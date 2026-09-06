@@ -19,11 +19,6 @@
 <link rel="preconnect" href="https://github.com" crossorigin />
 <link rel="preconnect" href="https://objects.githubusercontent.com" crossorigin />
 <link rel="preload" as="image" href="https://github.com/user-attachments/assets/09c01193-501b-4ca5-9235-0097fd3836e2" />
-<link rel="preload" as="image" href="https://github.com/user-attachments/assets/36978bae-bd81-44cc-9487-96ad4230588d" />
-<link rel="preload" as="image" href="https://github.com/user-attachments/assets/1f96c6cb-cb0a-4d7a-80a0-7b5787a4c80b" />
-<link rel="preload" as="image" href="https://github.com/user-attachments/assets/f796cd1b-2227-47fe-9a0b-067789965a70" />
-<link rel="preload" as="image" href="https://github.com/user-attachments/assets/608b5c31-8e8c-46a1-9acb-ba4326a13377" />
-<link rel="preload" as="image" href="https://github.com/user-attachments/assets/0f816811-6179-4c51-b4e0-28c16a7d4a83" />
 
 <style>
   :root {
@@ -94,10 +89,13 @@
   .player-card.p1 { border-color: rgba(255,107,107,0.4); }
   .player-card.p2 { border-color: rgba(79,195,247,0.4); }
   .player-card.active { box-shadow: 0 0 0 2px var(--accent), 0 0 18px rgba(255,138,0,0.4); }
-  .player-name { font-weight: bold; font-size: 1rem; margin-bottom: 6px; }
+  .player-name { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
   .p1 .player-name { color: var(--p1); }
   .p2 .player-name { color: var(--p2); }
+  .char-name { font-size: 0.78rem; color: var(--muted); min-height: 1.1em; margin-bottom: 6px; }
   .wins { font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; }
+  .hp { font-size: 1.3rem; letter-spacing: 2px; min-height: 1.4em; margin-bottom: 2px; }
+  .hp .empty { opacity: 0.18; }
   .energy { font-size: 1.3rem; letter-spacing: 2px; min-height: 1.4em; }
   .energy .empty { opacity: 0.18; }
 
@@ -145,6 +143,7 @@
     margin-top: 8px;
   }
   .big-btn:hover { filter: brightness(1.08); }
+  .big-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
   .big-btn.secondary {
     background: var(--panel2); color: var(--text);
     border: 1px solid #39424f; font-size: 0.95rem; padding: 12px;
@@ -152,6 +151,27 @@
   .pass-note { text-align: center; color: var(--muted); font-size: 0.95rem; margin: 8px 0 16px; }
   .ready-icons { display: flex; justify-content: center; gap: 30px; margin: 10px 0 18px; }
   .ready-icons .ready-fig { width: 110px; height: 150px; position: relative; }
+
+  /* ============ CHARACTER SELECT ============ */
+  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .char-opt {
+    background: var(--panel2);
+    border: 2px solid #39424f;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.08s, border-color 0.15s, box-shadow 0.15s;
+    color: var(--text);
+    font: inherit;
+  }
+  .char-opt:hover { transform: translateY(-2px); }
+  .char-opt.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(255,138,0,0.35); }
+  .char-opt img { width: 84px; height: 84px; object-fit: contain; display: block; margin: 0 auto 6px; }
+  .char-opt .cname { font-weight: bold; font-size: 1rem; margin-bottom: 2px; }
+  .char-opt .cmove { font-size: 0.82rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
+  .char-opt .cdesc { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
+  .char-opt .ccost { font-size: 0.72rem; color: var(--text); margin-top: 4px; }
 
   /* ============ BATTLE STAGE ============ */
   #battle .card { padding: 0; overflow: hidden; }
@@ -179,8 +199,8 @@
   }
   .fighter-wrap.left { left: 0; }
   .fighter-wrap.right { right: 0; }
-  .fighter-wrap.right.knockback { transform: translateX(18px); }
-  .fighter-wrap.left.knockback  { transform: translateX(-18px); }
+  .fighter-wrap.right.knockback { transform: translateX(40px); }
+  .fighter-wrap.left.knockback  { transform: translateX(-40px); }
 
   .name-tag {
     position: absolute; top: -46px; left: 50%; transform: translateX(-50%);
@@ -213,25 +233,38 @@
   @keyframes stageShake { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-6px,3px)} 40%{transform:translate(6px,-3px)} 60%{transform:translate(-4px,2px)} 80%{transform:translate(4px,-2px)} }
   .stage.shake { animation: stageShake 0.45s; }
 
+  /* heal sparkle overlay */
+  .heal-glow {
+    position:absolute; z-index:26; width:120px; height:120px; border-radius:50%;
+    background: radial-gradient(circle, rgba(120,255,170,0.85) 0%, rgba(80,220,140,0.35) 40%, rgba(80,220,140,0) 70%);
+    transform: scale(0); pointer-events:none;
+  }
+  .heal-glow.go { animation: healAnim 0.9s ease-out forwards; }
+  @keyframes healAnim { 0%{transform:scale(0.3);opacity:1} 100%{transform:scale(1.6);opacity:0} }
+
   /* ---- image-based fighter ---- */
   .fighter-img {
     display: block;
     width: 100%; height: auto;   /* box hugs the image; no empty space above */
     filter: drop-shadow(0 6px 8px rgba(0,0,0,0.55));
   }
-  /* idle bob */
-  @keyframes idleBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-  .fighter-wrap .fighter-img { animation: idleBob 1.7s ease-in-out infinite; }
+  /* Player 2's artwork is authored facing right; flip it to face left. */
+  .p2c .fighter-img { transform: scaleX(-1); }
+  /* idle bob (keep the P2 horizontal flip while bobbing) */
+  @keyframes idleBob    { 0%,100%{transform:translateY(0)}                50%{transform:translateY(-3px)} }
+  @keyframes idleBobFlip{ 0%,100%{transform:scaleX(-1) translateY(0)}     50%{transform:scaleX(-1) translateY(-3px)} }
+  .p1c .fighter-img { animation: idleBob 1.7s ease-in-out infinite; }
+  .p2c .fighter-img { animation: idleBobFlip 1.7s ease-in-out infinite; }
 
-  /* projectiles are now the provided effect images */
+  /* projectiles are the provided effect images */
   .projectile {
     position:absolute; z-index:20; pointer-events:none;
     object-fit: contain;
   }
-  .proj-blast { width:70px; height:70px; }
-  .proj-hado  { width:110px; height:110px; }
-  /* player 2's blast effect image reads a bit larger, so shrink it slightly */
-  .proj-blast.from-p2 { width:56px; height:56px; }
+  .proj-blast   { width:70px; height:70px; }
+  .proj-special { width:110px; height:110px; }
+  /* effects fired by player 2 face the other way */
+  .projectile.from-p2 { transform: scaleX(-1); }
 
   @keyframes travelR { from{left:110px} to{left:calc(100% - 150px)} }
   @keyframes travelL { from{right:110px} to{right:calc(100% - 150px)} }
@@ -251,12 +284,16 @@
   .clash.go { animation: clashAnim 0.7s ease-out; }
   @keyframes clashAnim { 0%{opacity:0;transform:translate(-50%,-50%) scale(0.4)} 40%{opacity:1;transform:translate(-50%,-50%) scale(1.3)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1)} }
 
-  @keyframes fallLeft  { 0%{transform:rotate(0) translateY(0);opacity:1} 100%{transform:rotate(-82deg) translateY(30px);opacity:0.75} }
-  @keyframes fallRight { 0%{transform:rotate(0) translateY(0);opacity:1} 100%{transform:rotate(82deg) translateY(30px);opacity:0.75} }
+  @keyframes fallLeft      { 0%{transform:rotate(0) translateY(0);opacity:1}          100%{transform:rotate(-82deg) translateY(30px);opacity:0.75} }
+  @keyframes fallRight     { 0%{transform:rotate(0) translateY(0);opacity:1}          100%{transform:rotate(82deg) translateY(30px);opacity:0.75} }
+  /* KO variants that preserve player 2's horizontal flip */
+  @keyframes fallLeftFlip  { 0%{transform:scaleX(-1) rotate(0) translateY(0);opacity:1}  100%{transform:scaleX(-1) rotate(-82deg) translateY(30px);opacity:0.75} }
+  @keyframes fallRightFlip { 0%{transform:scaleX(-1) rotate(0) translateY(0);opacity:1}  100%{transform:scaleX(-1) rotate(82deg) translateY(30px);opacity:0.75} }
   .fighter-wrap.ko .fighter-img { transform-origin: bottom center; }
-  /* player 1 (left) falls backward to the left; player 2 (right) falls backward to the right */
-  .fighter-wrap.left.ko .fighter-img  { animation: fallLeft 0.7s ease-in forwards; }
-  .fighter-wrap.right.ko .fighter-img { animation: fallRight 0.7s ease-in forwards; }
+  .fighter-wrap.left.p1c.ko  .fighter-img { animation: fallLeft  0.7s ease-in forwards; }
+  .fighter-wrap.right.p1c.ko .fighter-img { animation: fallRight 0.7s ease-in forwards; }
+  .fighter-wrap.left.p2c.ko  .fighter-img { animation: fallLeftFlip  0.7s ease-in forwards; }
+  .fighter-wrap.right.p2c.ko .fighter-img { animation: fallRightFlip 0.7s ease-in forwards; }
 
   /* Result */
   #result .winner-text { text-align: center; font-size: 2rem; font-weight: bold; margin: 20px 0; }
@@ -271,14 +308,6 @@
     border-top: 1px solid #2a3140; padding-top: 14px;
   }
   .home-rules .hr-item b { color: var(--text); }
-  .home-hero {
-    display: block; height: auto;
-    /* break out of the card's 20px padding so the image spans full width */
-    width: calc(100% + 40px);
-    margin: 18px -20px 4px;   /* cancel side padding; sits above the rules */
-    border-top: 1px solid #2a3140;
-    border-bottom: 1px solid #2a3140;
-  }
   /* On the home screen, hide the in-game topbar and status row */
   #app.home-active #topbar,
   #app.home-active #statusRow,
@@ -301,12 +330,16 @@
   <div class="status-row" id="statusRow">
     <div class="player-card p1" id="card1">
       <div class="player-name">プレイヤー1</div>
+      <div class="char-name" id="charName1"></div>
       <div class="wins" id="wins1">勝利数 0</div>
+      <div class="hp" id="hp1"></div>
       <div class="energy" id="energy1"></div>
     </div>
     <div class="player-card p2" id="card2">
       <div class="player-name">プレイヤー2</div>
+      <div class="char-name" id="charName2"></div>
       <div class="wins" id="wins2">勝利数 0</div>
+      <div class="hp" id="hp2"></div>
       <div class="energy" id="energy2"></div>
     </div>
   </div>
@@ -314,19 +347,25 @@
   <!-- Home / title screen -->
   <div class="screen" id="home">
     <div class="card home-card">
-      <p class="home-lead">プレイヤー1 と プレイヤー2 の読み合い対戦。<br>攻撃を当てた方が勝ち！</p>
+      <p class="home-lead">プレイヤー1 と プレイヤー2 の読み合い対戦。<br>相手のHPを0にした方が勝ち！</p>
       <button class="big-btn" id="startBtn">ゲームスタート</button>
-
-      <img class="home-hero" id="homeHero"
-           src="https://github.com/user-attachments/assets/36978bae-bd81-44cc-9487-96ad4230588d"
-           alt="CHARGE / GUARD / BLAST / HADOUKEN" fetchpriority="high" decoding="async" />
 
       <div class="home-rules">
         <div class="hr-item"><b>チャージ</b>／エネルギーを1溜める（MAX3）</div>
-        <div class="hr-item"><b>ブラスト</b>／エネルギー1消費。相手がチャージ中なら命中・ガードで防がれる</div>
-        <div class="hr-item"><b>ガード</b>／ブラストを防ぐ（波動拳は防げない）</div>
-        <div class="hr-item"><b>波動拳</b>／エネルギー3消費。波動拳同士は相殺、それ以外は必ず命中</div>
+        <div class="hr-item"><b>ブラスト</b>／エネルギー1消費。相手がチャージ中なら1ダメージ・ガードで防がれる</div>
+        <div class="hr-item"><b>ガード</b>／ブラストを防ぐ</div>
+        <div class="hr-item"><b>必殺技</b>／キャラクター固有。エネルギーを消費して発動</div>
+        <div class="hr-item"><b>HP</b>／🟢が3つ。0になったら負け</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Character select screen -->
+  <div class="screen" id="charScreen">
+    <div class="card">
+      <div class="prompt" id="charPrompt"></div>
+      <div class="char-grid" id="charGrid"></div>
+      <button class="big-btn" id="charConfirmBtn" disabled>キャラクターを決定</button>
     </div>
   </div>
 
@@ -396,73 +435,133 @@
 "use strict";
 
 const MAX_ENERGY = 3;
+const MAX_HP = 3;
 
-// Action button icons (images hosted on GitHub; referenced by URL because the
-// build sandbox has no outbound network to vendor the binaries locally).
 const TITLE_SRC = "https://github.com/user-attachments/assets/09c01193-501b-4ca5-9235-0097fd3836e2";
-const HERO_SRC = "https://github.com/user-attachments/assets/36978bae-bd81-44cc-9487-96ad4230588d";
+
+// Shared action-select icons (charge / guard / blast are common to all chars).
 const ICON_SRC = {
-  charge:   "https://github.com/user-attachments/assets/1f96c6cb-cb0a-4d7a-80a0-7b5787a4c80b",
-  guard:    "https://github.com/user-attachments/assets/f796cd1b-2227-47fe-9a0b-067789965a70",
-  blast:    "https://github.com/user-attachments/assets/608b5c31-8e8c-46a1-9acb-ba4326a13377",
-  hadouken: "https://github.com/user-attachments/assets/0f816811-6179-4c51-b4e0-28c16a7d4a83",
+  charge: "https://github.com/user-attachments/assets/234b1b35-454c-4385-b13f-91630002fd77",
+  guard:  "https://github.com/user-attachments/assets/726c330a-e112-42b2-bab7-5fa8acde8760",
+  blast:  "https://github.com/user-attachments/assets/449eaf72-150a-4e69-95a8-441d239d4a5e",
 };
 
-// Battle-scene fighter images. Each player has pose images (stance/charge/
-// guard/body) plus separate blast & hadouken effect images.
-const FIGHTER = {
-  1: {
-    stance:   "https://github.com/user-attachments/assets/b0de241a-e247-4316-9dda-2898c341a0d8",
-    charge:   "https://github.com/user-attachments/assets/3d7bb5dd-bf5a-404a-9a46-d7d8b56da7c4",
-    guard:    "https://github.com/user-attachments/assets/ee94e173-bba3-42e5-9f1c-eb40554118f9",
-    body:     "https://github.com/user-attachments/assets/12b1c385-262e-4dd0-8baf-69aca27bacdf",
-    blastFx:  "https://github.com/user-attachments/assets/9d8d740c-6458-4f1a-abb0-89df325ca1bc",
-    hadoFx:   "https://github.com/user-attachments/assets/ea0bc3d2-875c-4e1b-a017-13298d5e7e03",
+// ---- Character roster --------------------------------------------------
+// Each character has:
+//   icon        select-screen portrait
+//   poses       stance/charge/guard/body (action-scene sprites)
+//   specialFx   effect image used during the special move
+//   specialIcon action-select icon for the special (bottom-right button)
+//   special     {name, cost, desc, effect}
+// Player 2 art is NOT pre-flipped: it is flipped in CSS (transform: scaleX(-1)).
+const CHARACTERS = {
+  hadou: {
+    id: "hadou",
+    name: "Hadou",
+    icon: "https://github.com/user-attachments/assets/f82a6155-09e9-482b-a41e-3cc679c99cb4",
+    poses: {
+      stance: "https://github.com/user-attachments/assets/1e4f98b5-2249-45c3-a940-e0adcdc2515b",
+      charge: "https://github.com/user-attachments/assets/81c30b1d-9647-4391-bf44-416c0f6c5e3d",
+      guard:  "https://github.com/user-attachments/assets/fa000c14-9319-4773-9b94-8c5f8f9749da",
+      body:   "https://github.com/user-attachments/assets/149b3aa6-1641-41d4-8742-7599de51c6ce",
+    },
+    specialFx:   "https://github.com/user-attachments/assets/a1eec8fc-fb2e-45fa-b6d0-f1de471847ce",
+    specialIcon: "https://github.com/user-attachments/assets/f96de252-6c23-411b-aebb-34f34f9d8a82",
+    special: { name: "HADOUKEN", cost: 3, dmg: 1, guardable: false, kind: "attack",
+               desc: "ガード不能。相手に1ダメージ" },
   },
-  2: {
-    stance:   "https://github.com/user-attachments/assets/78f92c6c-7dc7-400e-b08a-0025be5a4b5f",
-    charge:   "https://github.com/user-attachments/assets/6deb9b00-2a2c-4ff8-808f-725f549c0923",
-    guard:    "https://github.com/user-attachments/assets/1b26b257-eee8-4cf2-8289-5725fb1ef40c",
-    body:     "https://github.com/user-attachments/assets/064b9b06-ba73-483e-92f2-89827aacde14",
-    blastFx:  "https://github.com/user-attachments/assets/5ec8d95c-eb37-4974-9c63-96f975bcf817",
-    hadoFx:   "https://github.com/user-attachments/assets/f11cb92c-f0cc-434b-b34f-9a4eab1d2a20",
+  blaze: {
+    id: "blaze",
+    name: "Blaze",
+    icon: "https://github.com/user-attachments/assets/bf25d5c0-672f-45bc-8228-e38a08dc49ff",
+    poses: {
+      stance: "https://github.com/user-attachments/assets/8f970804-88f3-480d-a055-88748f9d2f26",
+      charge: "https://github.com/user-attachments/assets/4efe2895-d055-4e16-a342-024fc3c7cf87",
+      guard:  "https://github.com/user-attachments/assets/ef2e645b-3257-4c3b-8fe2-0fb66065b7d9",
+      body:   "https://github.com/user-attachments/assets/77d615e4-f3b0-47b8-bb4a-4e9486223430",
+    },
+    specialFx:   "https://github.com/user-attachments/assets/ece64b81-6382-41fb-a914-8a5ac569b9ef",
+    specialIcon: "https://github.com/user-attachments/assets/b6ac2b69-17b3-4111-80c2-fed1ed5ecec3",
+    special: { name: "Mega Blast", cost: 2, dmg: 2, guardable: true, kind: "attack",
+               desc: "相手に2ダメージ。ただしガード可能" },
+  },
+  phantom: {
+    id: "phantom",
+    name: "Phantom",
+    icon: "https://github.com/user-attachments/assets/2f6d7aad-5b9f-408d-be74-449495e902ce",
+    poses: {
+      stance: "https://github.com/user-attachments/assets/b02941b1-6ab1-45e1-9827-13560080e17d",
+      charge: "https://github.com/user-attachments/assets/9e76b42e-8bfb-42ee-a1eb-fd4055ddd591",
+      guard:  "https://github.com/user-attachments/assets/ec0d3160-094c-4a25-8c7f-cf4fac72f940",
+      body:   "https://github.com/user-attachments/assets/b90bcb86-65fe-44ff-8c0d-b6eb7f7d33fb",
+    },
+    specialFx:   "https://github.com/user-attachments/assets/2f0e8373-6cdd-4166-a7e3-a01abbbd2364",
+    specialIcon: "https://github.com/user-attachments/assets/315f854e-97d1-4af4-a0f3-bd12205999da",
+    special: { name: "VOID", cost: 1, dmg: 0, guardable: false, kind: "drain",
+               desc: "相手のエネルギーを1減らす。相手が攻撃してきた場合、HPは減る" },
+  },
+  angel: {
+    id: "angel",
+    name: "Angel",
+    icon: "https://github.com/user-attachments/assets/7dcf6ead-1a63-437b-8ea7-17718bcc5da2",
+    poses: {
+      stance: "https://github.com/user-attachments/assets/41288365-cbf8-4d49-8aca-1419b8ff0ba4",
+      charge: "https://github.com/user-attachments/assets/28e5537e-2e32-4071-b2fe-4fd5fa52ac09",
+      guard:  "https://github.com/user-attachments/assets/9aaa07b4-2d0b-4607-9b0d-c7af29b5a680",
+      body:   "https://github.com/user-attachments/assets/0c489515-670b-46f8-8cf8-f049e19506d9",
+    },
+    specialFx:   "https://github.com/user-attachments/assets/42808580-9269-41b6-9682-9bef5bc95e47",
+    specialIcon: "https://github.com/user-attachments/assets/3478bdbc-bab9-4794-aa38-63c2e4aac716",
+    special: { name: "Heal", cost: 2, dmg: 0, guardable: false, kind: "heal",
+               desc: "自分のHPを1回復する" },
   },
 };
+
+// Shared blast (ブラスト) effect image used by every character.
+const BLAST_FX = "https://github.com/user-attachments/assets/1b9a0874-895e-4761-b925-87125784333e";
+
+const CHAR_ORDER = ["hadou", "blaze", "phantom", "angel"];
+
+// ---- image resolution helpers -----------------------------------------
+function charOf(player) { return CHARACTERS[state.char[player]]; }
+
 // pose image shown for each action (idle/countdown uses "stance")
 function poseSrc(player, key) {
-  const f = FIGHTER[player];
-  if (key === "charge") return f.charge;
-  if (key === "guard")  return f.guard;
-  if (key === "blast" || key === "hadouken") return f.body;
-  return f.stance;
+  const c = charOf(player);
+  const p = c.poses;
+  if (key === "charge") return p.charge;
+  if (key === "guard")  return p.guard;
+  if (key === "blast" || key === "special") return p.body;
+  return p.stance;
 }
+function specialFxSrc(player)   { return charOf(player).specialFx; }
+function blastFxSrc()           { return BLAST_FX; }
 
-// Preload every image up-front and KEEP the Image objects alive in a cache so
-// the browser holds the decoded bitmaps in memory. This removes the lag when a
-// pose is swapped and ensures short-lived projectile effects render instantly.
+// Preload every image up-front and KEEP the Image objects alive in a cache.
 const IMG_CACHE = {};
 (function preloadImages() {
-  const fighterImgs = [1, 2].flatMap((p) => Object.values(FIGHTER[p]));
-  [TITLE_SRC, HERO_SRC, ...Object.values(ICON_SRC), ...fighterImgs]
-    .forEach((src) => {
-      const im = new Image();
-      im.decoding = "async";
-      im.src = src;
-      IMG_CACHE[src] = im;
-    });
+  const urls = [TITLE_SRC, BLAST_FX, ...Object.values(ICON_SRC)];
+  for (const id of CHAR_ORDER) {
+    const c = CHARACTERS[id];
+    urls.push(c.icon, c.specialFx, c.specialIcon, ...Object.values(c.poses));
+  }
+  urls.forEach((src) => {
+    const im = new Image();
+    im.decoding = "async";
+    im.src = src;
+    IMG_CACHE[src] = im;
+  });
 })();
 
-const ICONS = Object.fromEntries(
-  Object.entries(ICON_SRC).map(([key, src]) =>
-    [key, `<img class="icon" src="${src}" alt="" decoding="async" />`])
-);
-
-const ACTIONS = {
-  charge:   { key: "charge",   label: "チャージ", cost: 0, costLabel: "エネルギー +1" },
-  blast:    { key: "blast",    label: "ブラスト", cost: 1, costLabel: "エネルギー -1" },
-  guard:    { key: "guard",    label: "ガード",   cost: 0, costLabel: "消費なし" },
-  hadouken: { key: "hadouken", label: "波動拳",   cost: 3, costLabel: "エネルギー -3" },
-};
+// ---- Action definitions (special is resolved per character) ------------
+function actionMeta(player, key) {
+  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge };
+  if (key === "blast")  return { label: "ブラスト", cost: 1, icon: ICON_SRC.blast };
+  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard };
+  // special
+  const sp = charOf(player).special;
+  return { label: sp.name, cost: sp.cost, icon: charOf(player).specialIcon };
+}
 
 let state;
 let battleToken = 0; // incremented whenever a battle should be cancelled (e.g. Home)
@@ -471,12 +570,24 @@ let battleToken = 0; // incremented whenever a battle should be cancelled (e.g. 
 let wins = { 1: 0, 2: 0 };
 
 function initState() {
-  state = { energy: { 1: 0, 2: 0 }, turn: 1, currentPlayer: 1, choice: { 1: null, 2: null } };
+  state = {
+    energy: { 1: 0, 2: 0 },
+    hp: { 1: MAX_HP, 2: MAX_HP },
+    char: { 1: null, 2: null },
+    turn: 1,
+    currentPlayer: 1,
+    choice: { 1: null, 2: null },
+  };
 }
 
 function renderWins() {
   $("wins1").textContent = `勝利数 ${wins[1]}`;
   $("wins2").textContent = `勝利数 ${wins[2]}`;
+}
+
+function renderCharNames() {
+  $("charName1").textContent = state.char[1] ? CHARACTERS[state.char[1]].name : "";
+  $("charName2").textContent = state.char[2] ? CHARACTERS[state.char[2]].name : "";
 }
 
 // Show the home / title screen, cancelling any running battle. Resets wins.
@@ -485,29 +596,34 @@ function goHome() {
   wins = { 1: 0, 2: 0 };
   initState();
   renderWins();
+  renderCharNames();
   setActiveCard(0);
   $("turnBanner").textContent = "";
   showScreen("home");
 }
 
-// Begin a fresh game from the home screen. Resets wins.
+// Begin a fresh game from the home screen -> character selection. Resets wins.
 function startGame() {
   battleToken++;
   wins = { 1: 0, 2: 0 };
   renderWins();
   initState();
-  startTurn();
+  renderCharNames();
+  goToCharSelect(1);
 }
 
-// Play again after a result, keeping the running win count.
+// Play again after a result, keeping characters and win count.
 function playAgain() {
   battleToken++;
+  const keepChar = { 1: state.char[1], 2: state.char[2] };
   initState();
+  state.char = keepChar;
+  renderCharNames();
   startTurn();
 }
 
 const $ = (id) => document.getElementById(id);
-const screens = ["home", "passScreen", "selectScreen", "readyScreen", "battle", "result"];
+const screens = ["home", "charScreen", "passScreen", "selectScreen", "readyScreen", "battle", "result"];
 function showScreen(id) {
   screens.forEach((s) => $(s).classList.toggle("show", s === id));
   // toggle home layout (hide in-game chrome on the title screen)
@@ -523,9 +639,65 @@ function renderEnergy() {
   }
 }
 
+function renderHP() {
+  for (const p of [1, 2]) {
+    const n = state.hp[p];
+    let html = "";
+    for (let i = 0; i < MAX_HP; i++) html += `<span class="${i < n ? "" : "empty"}">🟢</span>`;
+    $("hp" + p).innerHTML = html;
+  }
+}
+
 function setActiveCard(player) {
   $("card1").classList.toggle("active", player === 1);
   $("card2").classList.toggle("active", player === 2);
+}
+
+// ---- Character selection ----
+let pendingChar = null;
+function goToCharSelect(player) {
+  state.currentPlayer = player;
+  setActiveCard(player);
+  pendingChar = null;
+  $("charPrompt").textContent = `プレイヤー${player}：キャラクターを選択`;
+  const grid = $("charGrid");
+  grid.innerHTML = "";
+  for (const id of CHAR_ORDER) {
+    const c = CHARACTERS[id];
+    const btn = document.createElement("button");
+    btn.className = "char-opt";
+    btn.dataset.id = id;
+    btn.innerHTML = `
+      <img src="${c.icon}" alt="${c.name}" decoding="async" />
+      <div class="cname">${c.name}</div>
+      <div class="cmove">${c.special.name}</div>
+      <div class="cdesc">${c.special.desc}</div>
+      <div class="ccost">消費エネルギー ${c.special.cost}</div>`;
+    btn.addEventListener("click", () => selectChar(id));
+    grid.appendChild(btn);
+  }
+  $("charConfirmBtn").disabled = true;
+  showScreen("charScreen");
+}
+
+function selectChar(id) {
+  pendingChar = id;
+  document.querySelectorAll(".char-opt").forEach((el) =>
+    el.classList.toggle("selected", el.dataset.id === id));
+  $("charConfirmBtn").disabled = false;
+}
+
+function confirmChar() {
+  if (!pendingChar) return;
+  const player = state.currentPlayer;
+  state.char[player] = pendingChar;
+  renderCharNames();
+  if (player === 1) {
+    goToCharSelect(2);
+  } else {
+    // both chosen -> start the match
+    startTurn();
+  }
 }
 
 // ---- Flow ----
@@ -533,6 +705,7 @@ function startTurn() {
   state.choice = { 1: null, 2: null };
   state.currentPlayer = 1;
   renderEnergy();
+  renderHP();
   $("turnBanner").textContent = `ターン ${state.turn}`;
   goToPass(1);
 }
@@ -550,15 +723,15 @@ function goToSelect(player) {
   $("selectPrompt").textContent = `プレイヤー${player}：アクションを選択`;
   const container = $("actionButtons");
   container.innerHTML = "";
-  for (const key of ["charge", "blast", "guard", "hadouken"]) {
-    const a = ACTIONS[key];
+  for (const key of ["charge", "blast", "guard", "special"]) {
+    const a = actionMeta(player, key);
     const btn = document.createElement("button");
     btn.className = "action";
     const canAfford = state.energy[player] >= a.cost;
     btn.disabled = !canAfford;
-    btn.title = `${a.label}（${a.costLabel}）`;   // keep info on hover / for a11y
+    btn.title = `${a.label}`;
     btn.setAttribute("aria-label", a.label);
-    btn.innerHTML = ICONS[key];                    // image-only button
+    btn.innerHTML = `<img class="icon" src="${a.icon}" alt="" decoding="async" />`;
     if (canAfford) btn.addEventListener("click", () => chooseAction(player, key));
     container.appendChild(btn);
   }
@@ -575,51 +748,121 @@ function chooseAction(player, key) {
   }
 }
 
-// NEW: an execute/ready screen between P2's choice and the battle scene
+// An execute/ready screen between P2's choice and the battle scene
 function goToReady() {
-  // show neutral stance silhouettes only (actions stay secret until the battle)
   $("readyFig1").innerHTML = readySilhouette(1);
   $("readyFig2").innerHTML = readySilhouette(2);
   showScreen("readyScreen");
 }
 
 function readySilhouette(player) {
-  // P2 images are already drawn facing left, so no flip needed
+  // Player 2 art is flipped here too, matching the battle scene.
+  const flip = player === 2 ? "transform:scaleX(-1);" : "";
   return `<img src="${poseSrc(player, "stance")}" alt=""
-    style="width:100%;height:100%;object-fit:contain;object-position:bottom center;filter:brightness(0.15) drop-shadow(0 0 6px rgba(0,0,0,0.6));" />`;
+    style="width:100%;height:100%;object-fit:contain;object-position:bottom center;${flip}filter:brightness(0.15) drop-shadow(0 0 6px rgba(0,0,0,0.6));" />`;
 }
 
-// ---- Battle resolution ----
-function resolve(a1, a2) {
-  if (a1 === "hadouken" && a2 === "hadouken") return { result: "continue", kind: "clash-hado", reason: "波動拳が激突！相殺！" };
-  if (a1 === "hadouken") return { result: "p1", kind: "hado", reason: "プレイヤー1の波動拳が炸裂！" };
-  if (a2 === "hadouken") return { result: "p2", kind: "hado", reason: "プレイヤー2の波動拳が炸裂！" };
+// ---- Battle resolution -------------------------------------------------
+// Returns { events: [ {target, dmg} | {target, heal} | {target, drainEnergy} ],
+//           logs: [..], attackers: {1:bool,2:bool} } describing what happens
+// this turn. HP/energy are applied afterwards, then win is checked.
+function resolveTurn(a1, a2) {
+  const sp1 = charOf(1).special, sp2 = charOf(2).special;
+  const events = [];
+  const logs = [];
 
-  if (a1 === "blast" && a2 === "blast") return { result: "continue", kind: "clash-blast", reason: "ブラストが激突！相殺！" };
-  if (a1 === "blast") {
-    if (a2 === "charge") return { result: "p1", kind: "blast", reason: "プレイヤー1のブラストが命中！" };
-    if (a2 === "guard")  return { result: "continue", kind: "blocked", by: 2, reason: "プレイヤー2がガードで防いだ！" };
+  // Determine per-player "attack intent" for VOID interaction.
+  const isAttack = (p, a) => a === "blast" || (a === "special" && charOf(p).special.kind === "attack");
+
+  // Damage dealt by an attacking action against opponent's action.
+  // Returns damage number (0 if fully defended) plus whether it was "blocked".
+  function attackResult(attacker, action, defender, defAction) {
+    if (action === "blast") {
+      // Blast is stopped only by a guard. Against any other action it lands
+      // for 1 damage. This also means an incoming blast hits a VOID user
+      // ("相手が攻撃してきた場合、HPは減る").
+      if (defAction === "guard") return { dmg: 0, blocked: true };
+      return { dmg: 1, blocked: false };
+    }
+    if (action === "special") {
+      const sp = charOf(attacker).special;
+      if (sp.kind === "attack") {
+        if (sp.guardable && defAction === "guard") return { dmg: 0, blocked: true };
+        return { dmg: sp.dmg, blocked: false };
+      }
+    }
+    return { dmg: 0, blocked: false, whiff: true };
   }
-  if (a2 === "blast") {
-    if (a1 === "charge") return { result: "p2", kind: "blast", reason: "プレイヤー2のブラストが命中！" };
-    if (a1 === "guard")  return { result: "continue", kind: "blocked", by: 1, reason: "プレイヤー1がガードで防いだ！" };
+
+  // Handle special non-damage kinds first (heal / drain), they resolve for the
+  // acting player regardless of opponent (VOID also drains).
+  // We collect events then apply.
+
+  // Heal
+  for (const p of [1, 2]) {
+    const a = p === 1 ? a1 : a2;
+    if (a === "special" && charOf(p).special.kind === "heal") {
+      events.push({ type: "heal", target: p, amount: 1 });
+      logs.push(`プレイヤー${p}の${charOf(p).special.name}！HPを回復！`);
+    }
   }
-  return { result: "continue", kind: "none", reason: "決着つかず。次のターンへ！" };
+
+  // VOID drain: reduces opponent energy by 1. If opponent attacked this turn,
+  // the VOID user also takes HP damage from that attack.
+  for (const p of [1, 2]) {
+    const a = p === 1 ? a1 : a2;
+    if (a === "special" && charOf(p).special.kind === "drain") {
+      const opp = p === 1 ? 2 : 1;
+      events.push({ type: "drain", target: opp, amount: 1 });
+      logs.push(`プレイヤー${p}の${charOf(p).special.name}！プレイヤー${opp}のエネルギーを吸収！`);
+    }
+  }
+
+  // Attacks (blast / attack-specials). Resolve both directions.
+  const res1 = attackResult(1, a1, 2, a2);
+  const res2 = attackResult(2, a2, 1, a1);
+
+  if (a1 === "blast" || (a1 === "special" && sp1.kind === "attack")) {
+    if (res1.blocked) {
+      logs.push(`プレイヤー2がガードで防いだ！`);
+    } else if (res1.dmg > 0) {
+      events.push({ type: "dmg", target: 2, amount: res1.dmg, from: 1, action: a1 });
+      logs.push(`プレイヤー1の${a1 === "special" ? sp1.name : "ブラスト"}が命中！`);
+    }
+  }
+  if (a2 === "blast" || (a2 === "special" && sp2.kind === "attack")) {
+    if (res2.blocked) {
+      logs.push(`プレイヤー1がガードで防いだ！`);
+    } else if (res2.dmg > 0) {
+      events.push({ type: "dmg", target: 1, amount: res2.dmg, from: 2, action: a2 });
+      logs.push(`プレイヤー2の${a2 === "special" ? sp2.name : "ブラスト"}が命中！`);
+    }
+  }
+
+  if (events.length === 0) logs.push("決着つかず。次のターンへ！");
+
+  return { events, logs, isAttack: { 1: isAttack(1, a1), 2: isAttack(2, a2) } };
 }
 
 function applyCosts() {
   for (const p of [1, 2]) {
     const key = state.choice[p];
     if (key === "charge") state.energy[p] = Math.min(MAX_ENERGY, state.energy[p] + 1);
-    else state.energy[p] = Math.max(0, state.energy[p] - ACTIONS[key].cost);
+    else state.energy[p] = Math.max(0, state.energy[p] - actionMeta(p, key).cost);
   }
 }
 
-// ---- Battle scene (rich choreography) ----
+function applyEvents(events) {
+  for (const ev of events) {
+    if (ev.type === "dmg")   state.hp[ev.target] = Math.max(0, state.hp[ev.target] - ev.amount);
+    if (ev.type === "heal")  state.hp[ev.target] = Math.min(MAX_HP, state.hp[ev.target] + ev.amount);
+    if (ev.type === "drain") state.energy[ev.target] = Math.max(0, state.energy[ev.target] - ev.amount);
+  }
+}
+
+// ---- Battle scene (choreography) ---------------------------------------
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-// Resolve once the given image URL is fully loaded (uses the preload cache).
-// Guarantees pose swaps and short-lived effect images are painted immediately.
 function ensureLoaded(src, timeoutMs = 2000) {
   const im = IMG_CACHE[src] || (IMG_CACHE[src] = Object.assign(new Image(), { src }));
   if (im.complete && im.naturalWidth > 0) return Promise.resolve();
@@ -628,17 +871,16 @@ function ensureLoaded(src, timeoutMs = 2000) {
     const finish = () => { if (!done) { done = true; resolve(); } };
     im.addEventListener("load", finish, { once: true });
     im.addEventListener("error", finish, { once: true });
-    setTimeout(finish, timeoutMs); // never block the battle if the network is slow
+    setTimeout(finish, timeoutMs);
   });
 }
 
-// Preload every image the upcoming battle will use, before it starts.
 function preloadForBattle(a1, a2) {
   const urls = new Set([poseSrc(1, a1), poseSrc(2, a2)]);
-  if (a1 === "blast") urls.add(FIGHTER[1].blastFx);
-  if (a1 === "hadouken") urls.add(FIGHTER[1].hadoFx);
-  if (a2 === "blast") urls.add(FIGHTER[2].blastFx);
-  if (a2 === "hadouken") urls.add(FIGHTER[2].hadoFx);
+  if (a1 === "blast") urls.add(blastFxSrc());
+  if (a2 === "blast") urls.add(blastFxSrc());
+  if (a1 === "special") urls.add(specialFxSrc(1));
+  if (a2 === "special") urls.add(specialFxSrc(2));
   return Promise.all([...urls].map(ensureLoaded));
 }
 
@@ -651,20 +893,18 @@ function flashStage() {
   f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
 }
 
-// Vertical center where projectiles should travel (roughly the fighters'
-// hand height, measured from the stage floor).
 const PROJECTILE_CENTER = 150;
 
+// kind: "blast" or "special"
 function spawnProjectile(fromPlayer, kind) {
   const stage = $("stage");
   const el = document.createElement("img");
-  const isHado = kind === "hadouken";
-  el.className = "projectile " + (isHado ? "proj-hado" : "proj-blast");
+  const isSpecial = kind === "special";
+  el.className = "projectile " + (isSpecial ? "proj-special" : "proj-blast");
   if (fromPlayer === 2) el.classList.add("from-p2");
-  el.src = isHado ? FIGHTER[fromPlayer].hadoFx : FIGHTER[fromPlayer].blastFx;
+  el.src = isSpecial ? specialFxSrc(fromPlayer) : blastFxSrc();
   const goRight = fromPlayer === 1;
-  const size = isHado ? 110 : (fromPlayer === 2 ? 56 : 70);
-  // align the projectile's CENTER with the fighters' hands
+  const size = isSpecial ? 110 : 70;
   el.style.bottom = (PROJECTILE_CENTER - size / 2) + "px";
   el.style.animation = `${goRight ? "travelR" : "travelL"} 0.6s linear forwards`;
   stage.appendChild(el);
@@ -675,10 +915,20 @@ function impactAt(rightSide) {
   const stage = $("stage");
   const el = document.createElement("div");
   el.className = "impact go";
-  el.style.bottom = (PROJECTILE_CENTER - 40) + "px"; // impact is 80px tall
+  el.style.bottom = (PROJECTILE_CENTER - 40) + "px";
   if (rightSide) el.style.right = "70px"; else el.style.left = "70px";
   stage.appendChild(el);
   setTimeout(() => el.remove(), 600);
+}
+
+function healGlowAt(player) {
+  const stage = $("stage");
+  const el = document.createElement("div");
+  el.className = "heal-glow go";
+  el.style.bottom = (PROJECTILE_CENTER - 60) + "px";
+  if (player === 1) el.style.left = "20px"; else el.style.right = "20px";
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 950);
 }
 
 function clashText(txt) {
@@ -691,26 +941,22 @@ function clashText(txt) {
 
 function resetStage() {
   const stage = $("stage");
-  // remove any leftover dynamic elements from a previous turn
-  stage.querySelectorAll(".projectile, .impact").forEach((el) => el.remove());
+  stage.querySelectorAll(".projectile, .impact, .heal-glow").forEach((el) => el.remove());
   const clash = $("clash");
   if (clash) clash.remove();
-  // clear lingering animation classes
   stage.classList.remove("shake");
   $("flash").classList.remove("go");
   $("fw1").className = "fighter-wrap left p1c";
   $("fw2").className = "fighter-wrap right p2c";
-  // reset both fighters to their neutral stance pose
   $("fig1").src = poseSrc(1, "stance");
   $("fig2").src = poseSrc(2, "stance");
   $("battleLog").textContent = "";
   $("countdown").textContent = "";
-  // force reflow so removed animation classes fully reset before replay
   void stage.offsetWidth;
 }
 
 async function runBattle() {
-  const myToken = battleToken;           // snapshot; if it changes, this battle was cancelled
+  const myToken = battleToken;
   const cancelled = () => myToken !== battleToken;
 
   const a1 = state.choice[1], a2 = state.choice[2];
@@ -720,12 +966,9 @@ async function runBattle() {
   const fig1 = $("fig1"), fig2 = $("fig2");
   const cd = $("countdown");
 
-  // Make sure every image this battle needs is decoded before we start,
-  // so pose swaps have no lag and effect images always render.
   await preloadForBattle(a1, a2);
   if (cancelled()) return;
 
-  // Countdown 3-2-1-FIGHT
   for (const t of ["3", "2", "1", "FIGHT!"]) {
     cd.textContent = t;
     cd.classList.remove("pop"); void cd.offsetWidth; cd.classList.add("pop");
@@ -734,131 +977,120 @@ async function runBattle() {
   }
   cd.textContent = "";
 
-  // Reveal stances (swap to each action's pose image)
   fig1.src = poseSrc(1, a1);
   fig2.src = poseSrc(2, a2);
-  $("battleLog").textContent = `${ACTIONS[a1].label}　VS　${ACTIONS[a2].label}`;
+  $("battleLog").textContent = `${actionMeta(1, a1).label}　VS　${actionMeta(2, a2).label}`;
   await delay(700);
   if (cancelled()) return;
 
-  const outcome = resolve(a1, a2);
+  const outcome = resolveTurn(a1, a2);
   applyCosts();
-  renderEnergy();
 
   await playChoreography(a1, a2, outcome);
   if (cancelled()) return;
 
-  $("battleLog").textContent = outcome.reason;
-  await delay(1300);
+  // Apply HP / energy changes now, then render.
+  applyEvents(outcome.events);
+  renderEnergy();
+  renderHP();
+
+  // Knockback + KO for damaged players.
+  const dmgTargets = outcome.events.filter((e) => e.type === "dmg").map((e) => e.target);
+  for (const t of [...new Set(dmgTargets)]) {
+    const wrap = t === 1 ? $("fw1") : $("fw2");
+    wrap.classList.add("knockback");
+    if (state.hp[t] <= 0) {
+      await delay(220);
+      wrap.classList.add("ko");
+    }
+  }
+  if (dmgTargets.length) await delay(500);
   if (cancelled()) return;
-  finishBattle(outcome);
+
+  $("battleLog").textContent = outcome.logs.join("　");
+  await delay(1400);
+  if (cancelled()) return;
+  finishBattle();
 }
 
 async function playChoreography(a1, a2, outcome) {
-  const kind = outcome.kind;
+  const sp1 = charOf(1).special, sp2 = charOf(2).special;
+  const isAttackAction = (p, a) => a === "blast" || (a === "special" && charOf(p).special.kind === "attack");
 
-  if (kind === "clash-hado" || kind === "clash-blast") {
-    // both fire, meet in the middle, explode
-    const proj = kind === "clash-hado" ? "hadouken" : "blast";
-    const p1 = spawnProjectile(1, proj), p2 = spawnProjectile(2, proj);
-    // shorten travel so they meet mid-stage
-    p1.style.animationDuration = "0.4s"; p2.style.animationDuration = "0.4s";
-    p1.style.animationName = "travelRhalf"; p2.style.animationName = "travelLhalf";
-    injectHalfKeyframes();
-    await delay(400);
-    p1.remove(); p2.remove();
-    impactMid(); clashText("相殺！"); flashStage(); shakeStage();
-    await delay(500);
-    return;
-  }
+  const p1Attacks = isAttackAction(1, a1);
+  const p2Attacks = isAttackAction(2, a2);
 
-  if (kind === "hado" || kind === "blast") {
-    const attacker = outcome.result === "p1" ? 1 : 2;
-    const loser = attacker === 1 ? 2 : 1;
-    const attackerAction = attacker === 1 ? a1 : a2;
-    const loserAction = attacker === 1 ? a2 : a1;
-
-    // Winner's projectile.
-    const winProj = spawnProjectile(attacker, attackerAction);
-    // If the loser also threw a projectile (e.g. hadouken vs blast), fire it
-    // too so it is visible — it will be overpowered and fizzle at contact.
-    let loseProj = null;
-    if (loserAction === "blast" || loserAction === "hadouken") {
-      loseProj = spawnProjectile(loser, loserAction);
-      // the weaker shot only makes it partway before being overpowered
-      loseProj.style.animationDuration = "0.32s";
+  // Heal choreography (Angel)
+  for (const p of [1, 2]) {
+    const a = p === 1 ? a1 : a2;
+    if (a === "special" && charOf(p).special.kind === "heal") {
+      healGlowAt(p);
+      clashText("HEAL!");
     }
-    await delay(320);
-    if (loseProj) loseProj.remove(); // loser's shot is broken through
-    await delay(280);
-    winProj.remove();
-
-    // hit the loser
-    const rightSideHit = attacker === 1; // opponent is on the right
-    impactAt(rightSideHit);
-    flashStage(); shakeStage();
-    const loserWrap = attacker === 1 ? $("fw2") : $("fw1");
-    loserWrap.classList.add("knockback");
-    await delay(350);
-    loserWrap.classList.add("ko");
-    await delay(500);
-    return;
   }
 
-  if (kind === "blocked") {
-    // attacker fires, defender's shield flares
-    const attacker = outcome.by === 1 ? 2 : 1;
-    const el = spawnProjectile(attacker, "blast");
+  // Fire projectiles for any attacking action.
+  const projectiles = [];
+  if (p1Attacks) projectiles.push(spawnProjectile(1, a1 === "special" ? "special" : "blast"));
+  if (p2Attacks) projectiles.push(spawnProjectile(2, a2 === "special" ? "special" : "blast"));
+
+  // VOID drain shimmer (Phantom) — small pulse toward opponent.
+  for (const p of [1, 2]) {
+    const a = p === 1 ? a1 : a2;
+    if (a === "special" && charOf(p).special.kind === "drain") {
+      const el = spawnProjectile(p, "special");
+      el.style.animationDuration = "0.5s";
+      projectiles.push(el);
+    }
+  }
+
+  if (projectiles.length || p1Attacks || p2Attacks) {
     await delay(600);
-    el.remove();
-    const rightSideHit = attacker === 1;
-    impactAt(rightSideHit);
-    clashText("GUARD!"); flashStage(); shakeStage();
+  } else {
+    // pure charge/guard/heal turn
+    if (!outcome.events.some((e) => e.type === "heal")) clashText("…");
     await delay(500);
-    return;
   }
+  projectiles.forEach((el) => el.remove());
 
-  // no interaction (e.g. charge vs charge, guard vs guard, charge vs guard)
-  clashText("…");
-  await delay(500);
+  // Impacts for damage events.
+  const dmg = outcome.events.filter((e) => e.type === "dmg");
+  const blocked = outcome.logs.some((l) => l.includes("ガードで防いだ"));
+  for (const ev of dmg) {
+    impactAt(ev.target === 2);
+  }
+  if (dmg.length) { flashStage(); shakeStage(); }
+  else if (blocked) { clashText("GUARD!"); flashStage(); shakeStage(); }
+
+  await delay(300);
 }
 
-function impactMid() {
-  const stage = $("stage");
-  const el = document.createElement("div");
-  el.className = "impact go";
-  el.style.bottom = (PROJECTILE_CENTER - 60) + "px"; // mid impact is 120px tall
-  el.style.left = "50%"; el.style.transform = "translateX(-50%)";
-  el.style.width = "120px"; el.style.height = "120px";
-  stage.appendChild(el);
-  setTimeout(() => el.remove(), 600);
-}
+function finishBattle() {
+  const dead1 = state.hp[1] <= 0, dead2 = state.hp[2] <= 0;
+  if (!dead1 && !dead2) { state.turn++; startTurn(); return; }
 
-let halfInjected = false;
-function injectHalfKeyframes() {
-  if (halfInjected) return;
-  const s = document.createElement("style");
-  s.textContent = `
-    @keyframes travelRhalf { from{left:96px} to{left:calc(50% - 24px)} }
-    @keyframes travelLhalf { from{right:96px} to{right:calc(50% - 24px)} }`;
-  document.head.appendChild(s);
-  halfInjected = true;
-}
+  let winner;
+  if (dead1 && dead2) winner = 0;         // double KO -> draw
+  else winner = dead2 ? 1 : 2;
 
-function finishBattle(outcome) {
-  if (outcome.result === "continue") { state.turn++; startTurn(); return; }
-  const winner = outcome.result === "p1" ? 1 : 2;
-  wins[winner]++;                 // tally the win (persists until Home/new game)
-  renderWins();
   showScreen("result");
   setActiveCard(0);
   $("turnBanner").textContent = "";
-  $("winnerText").textContent = `🏆 プレイヤー${winner} の勝ち！`;
-  $("winnerText").style.color = winner === 1 ? "var(--p1)" : "var(--p2)";
-  $("winnerSub").textContent = outcome.reason;
+  if (winner === 0) {
+    $("winnerText").textContent = "引き分け！";
+    $("winnerText").style.color = "var(--text)";
+    $("winnerSub").textContent = "両者ダウン！";
+  } else {
+    wins[winner]++;
+    renderWins();
+    $("winnerText").textContent = `🏆 プレイヤー${winner}（${CHARACTERS[state.char[winner]].name}）の勝ち！`;
+    $("winnerText").style.color = winner === 1 ? "var(--p1)" : "var(--p2)";
+    $("winnerSub").textContent = "相手のHPを0にした！";
+  }
 }
 
 // ---- Events ----
+$("charConfirmBtn").addEventListener("click", () => confirmChar());
 $("passBtn").addEventListener("click", () => goToSelect(state.currentPlayer));
 $("fightBtn").addEventListener("click", () => runBattle());
 $("startBtn").addEventListener("click", () => startGame());
