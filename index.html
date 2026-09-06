@@ -77,7 +77,7 @@
     min-height: 1.4em;
   }
 
-  .status-row { display: flex; gap: 12px; margin-bottom: 18px; }
+  .status-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
   .player-card {
     flex: 1;
     background: var(--panel);
@@ -94,6 +94,7 @@
   .p2 .player-name { color: var(--p2); }
   .char-name { font-size: 0.78rem; color: var(--muted); min-height: 1.1em; margin-bottom: 6px; }
   .wins { font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; }
+  .stat-label { font-size: 0.66rem; color: var(--muted); letter-spacing: 1px; }
   .hp { font-size: 1.3rem; letter-spacing: 2px; min-height: 1.4em; margin-bottom: 2px; }
   .hp .empty { opacity: 0.18; }
   .energy { font-size: 1.3rem; letter-spacing: 2px; min-height: 1.4em; }
@@ -153,7 +154,7 @@
   .ready-icons .ready-fig { width: 110px; height: 150px; position: relative; }
 
   /* ============ CHARACTER SELECT ============ */
-  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; align-items: start; }
   .char-opt {
     background: var(--panel2);
     border: 2px solid #39424f;
@@ -170,8 +171,8 @@
   .char-opt img { width: 84px; height: 84px; object-fit: contain; display: block; margin: 0 auto 6px; }
   .char-opt .cname { font-weight: bold; font-size: 1rem; margin-bottom: 2px; }
   .char-opt .cmove { font-size: 0.82rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
+  .char-opt .ccost { font-size: 0.72rem; color: var(--text); margin-bottom: 4px; }
   .char-opt .cdesc { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
-  .char-opt .ccost { font-size: 0.72rem; color: var(--text); margin-top: 4px; }
 
   /* ============ BATTLE STAGE ============ */
   #battle .card { padding: 0; overflow: hidden; }
@@ -199,6 +200,10 @@
   }
   .fighter-wrap.left { left: 0; }
   .fighter-wrap.right { right: 0; }
+  /* Angel is drawn larger than the others; render it a bit smaller. */
+  .fighter-wrap.char-angel { width: 118px; }
+  .fighter-wrap.char-angel.left  { left: 12px; }
+  .fighter-wrap.char-angel.right { right: 12px; }
   .fighter-wrap.right.knockback { transform: translateX(40px); }
   .fighter-wrap.left.knockback  { transform: translateX(-40px); }
 
@@ -332,14 +337,18 @@
       <div class="player-name">プレイヤー1</div>
       <div class="char-name" id="charName1"></div>
       <div class="wins" id="wins1">勝利数 0</div>
+      <div class="stat-label">HP</div>
       <div class="hp" id="hp1"></div>
+      <div class="stat-label">エネルギー</div>
       <div class="energy" id="energy1"></div>
     </div>
     <div class="player-card p2" id="card2">
       <div class="player-name">プレイヤー2</div>
       <div class="char-name" id="charName2"></div>
       <div class="wins" id="wins2">勝利数 0</div>
+      <div class="stat-label">HP</div>
       <div class="hp" id="hp2"></div>
+      <div class="stat-label">エネルギー</div>
       <div class="energy" id="energy2"></div>
     </div>
   </div>
@@ -355,7 +364,8 @@
         <div class="hr-item"><b>ブラスト</b>／エネルギー1消費。相手がチャージ中なら1ダメージ・ガードで防がれる</div>
         <div class="hr-item"><b>ガード</b>／ブラストを防ぐ</div>
         <div class="hr-item"><b>必殺技</b>／キャラクター固有。エネルギーを消費して発動</div>
-        <div class="hr-item"><b>HP</b>／🟢が3つ。0になったら負け</div>
+        <div class="hr-item"><b>🟢 HP</b>／3つからスタート。0になったら負け</div>
+        <div class="hr-item"><b>🟠 エネルギー</b>／最大3つ。ブラストや必殺技で消費</div>
       </div>
     </div>
   </div>
@@ -467,7 +477,7 @@ const CHARACTERS = {
     },
     specialFx:   "https://github.com/user-attachments/assets/a1eec8fc-fb2e-45fa-b6d0-f1de471847ce",
     specialIcon: "https://github.com/user-attachments/assets/f96de252-6c23-411b-aebb-34f34f9d8a82",
-    special: { name: "HADOUKEN", cost: 3, dmg: 1, guardable: false, kind: "attack",
+    special: { name: "波動拳", cost: 3, dmg: 1, guardable: false, kind: "attack",
                desc: "ガード不能。相手に1ダメージ" },
   },
   blaze: {
@@ -482,7 +492,7 @@ const CHARACTERS = {
     },
     specialFx:   "https://github.com/user-attachments/assets/ece64b81-6382-41fb-a914-8a5ac569b9ef",
     specialIcon: "https://github.com/user-attachments/assets/b6ac2b69-17b3-4111-80c2-fed1ed5ecec3",
-    special: { name: "Mega Blast", cost: 2, dmg: 2, guardable: true, kind: "attack",
+    special: { name: "メガブラスト", cost: 2, dmg: 2, guardable: true, kind: "attack",
                desc: "相手に2ダメージ。ただしガード可能" },
   },
   phantom: {
@@ -512,7 +522,7 @@ const CHARACTERS = {
     },
     specialFx:   "https://github.com/user-attachments/assets/42808580-9269-41b6-9682-9bef5bc95e47",
     specialIcon: "https://github.com/user-attachments/assets/3478bdbc-bab9-4794-aa38-63c2e4aac716",
-    special: { name: "Heal", cost: 2, dmg: 0, guardable: false, kind: "heal",
+    special: { name: "ヒール", cost: 2, dmg: 0, guardable: false, kind: "heal",
                desc: "自分のHPを1回復する" },
   },
 };
@@ -531,7 +541,13 @@ function poseSrc(player, key) {
   const p = c.poses;
   if (key === "charge") return p.charge;
   if (key === "guard")  return p.guard;
-  if (key === "blast" || key === "special") return p.body;
+  if (key === "special") {
+    // A heal special (Angel) swaps to its dedicated heal artwork instead of
+    // the generic attack body pose.
+    if (c.special.kind === "heal") return c.specialFx;
+    return p.body;
+  }
+  if (key === "blast") return p.body;
   return p.stance;
 }
 function specialFxSrc(player)   { return charOf(player).specialFx; }
@@ -670,9 +686,9 @@ function goToCharSelect(player) {
     btn.innerHTML = `
       <img src="${c.icon}" alt="${c.name}" decoding="async" />
       <div class="cname">${c.name}</div>
-      <div class="cmove">${c.special.name}</div>
-      <div class="cdesc">${c.special.desc}</div>
-      <div class="ccost">消費エネルギー ${c.special.cost}</div>`;
+      <div class="cmove">必殺技／${c.special.name}</div>
+      <div class="ccost">消費エネルギー ${c.special.cost}</div>
+      <div class="cdesc">${c.special.desc}</div>`;
     btn.addEventListener("click", () => selectChar(id));
     grid.appendChild(btn);
   }
@@ -774,6 +790,13 @@ function resolveTurn(a1, a2) {
   // Determine per-player "attack intent" for VOID interaction.
   const isAttack = (p, a) => a === "blast" || (a === "special" && charOf(p).special.kind === "attack");
 
+  // "Blast-type" projectiles cancel each other out (ブラスト同士 / ブラストと
+  // メガブラスト). A blast-type is a plain blast or a guardable attack special
+  // (メガブラスト). 波動拳 is unguardable/piercing and does NOT clash here.
+  const isBlastType = (p, a) =>
+    a === "blast" || (a === "special" && charOf(p).special.kind === "attack" && charOf(p).special.guardable);
+  const clash = isBlastType(1, a1) && isBlastType(2, a2);
+
   // Damage dealt by an attacking action against opponent's action.
   // Returns damage number (0 if fully defended) plus whether it was "blocked".
   function attackResult(attacker, action, defender, defAction) {
@@ -816,6 +839,13 @@ function resolveTurn(a1, a2) {
       events.push({ type: "drain", target: opp, amount: 1 });
       logs.push(`プレイヤー${p}の${charOf(p).special.name}！プレイヤー${opp}のエネルギーを吸収！`);
     }
+  }
+
+  // Blast-type vs blast-type: mutual cancel. Neither side loses HP and there
+  // is no knockback.
+  if (clash) {
+    logs.push("ブラストが激突！相殺！");
+    return { events, logs, clash: true, isAttack: { 1: isAttack(1, a1), 2: isAttack(2, a2) } };
   }
 
   // Attacks (blast / attack-specials). Resolve both directions.
@@ -931,6 +961,29 @@ function healGlowAt(player) {
   setTimeout(() => el.remove(), 950);
 }
 
+// Burst in the middle of the stage (used when two blast-type shots cancel).
+function impactMid() {
+  const stage = $("stage");
+  const el = document.createElement("div");
+  el.className = "impact go";
+  el.style.bottom = (PROJECTILE_CENTER - 60) + "px";
+  el.style.left = "50%"; el.style.transform = "translateX(-50%)";
+  el.style.width = "120px"; el.style.height = "120px";
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+let halfInjected = false;
+function injectHalfKeyframes() {
+  if (halfInjected) return;
+  const s = document.createElement("style");
+  s.textContent = `
+    @keyframes travelRhalf { from{left:110px} to{left:calc(50% - 35px)} }
+    @keyframes travelLhalf { from{right:110px} to{right:calc(50% - 35px)} }`;
+  document.head.appendChild(s);
+  halfInjected = true;
+}
+
 function clashText(txt) {
   const c = $("clash") || (() => {
     const e = document.createElement("div"); e.id = "clash"; e.className = "clash"; $("stage").appendChild(e); return e;
@@ -946,8 +999,8 @@ function resetStage() {
   if (clash) clash.remove();
   stage.classList.remove("shake");
   $("flash").classList.remove("go");
-  $("fw1").className = "fighter-wrap left p1c";
-  $("fw2").className = "fighter-wrap right p2c";
+  $("fw1").className = "fighter-wrap left p1c char-" + state.char[1];
+  $("fw2").className = "fighter-wrap right p2c char-" + state.char[2];
   $("fig1").src = poseSrc(1, "stance");
   $("fig2").src = poseSrc(2, "stance");
   $("battleLog").textContent = "";
@@ -1019,6 +1072,21 @@ async function playChoreography(a1, a2, outcome) {
 
   const p1Attacks = isAttackAction(1, a1);
   const p2Attacks = isAttackAction(2, a2);
+
+  // Blast-type clash: both projectiles fly, meet mid-stage and cancel. No hit,
+  // no knockback (there are no damage events for a clash).
+  if (outcome.clash) {
+    injectHalfKeyframes();
+    const p1 = spawnProjectile(1, a1 === "special" ? "special" : "blast");
+    const p2 = spawnProjectile(2, a2 === "special" ? "special" : "blast");
+    p1.style.animation = "travelRhalf 0.4s linear forwards";
+    p2.style.animation = "travelLhalf 0.4s linear forwards";
+    await delay(400);
+    p1.remove(); p2.remove();
+    impactMid(); clashText("相殺！"); flashStage(); shakeStage();
+    await delay(500);
+    return;
+  }
 
   // Heal choreography (Angel)
   for (const p of [1, 2]) {
