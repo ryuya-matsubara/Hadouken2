@@ -176,7 +176,7 @@
     color: var(--text);
     font: inherit;
     /* Fixed box size so all four cards match regardless of text length. */
-    height: 260px;
+    height: 320px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -333,6 +333,9 @@
   #app.home-active #topbar,
   #app.home-active #statusRow,
   #app.home-active #turnBanner { display: none; }
+  /* The big title image only appears on the home screen. */
+  h1.title { display: none; }
+  #app.home-active h1.title { display: block; }
 </style>
 </head>
 <body>
@@ -595,12 +598,13 @@ const IMG_CACHE = {};
 
 // ---- Action definitions (special is resolved per character) ------------
 function actionMeta(player, key) {
-  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge, desc: "エネルギーを1溜める（MAX3）" };
-  if (key === "blast")  return { label: "ブラスト", cost: 1, icon: ICON_SRC.blast, desc: "相手に1ダメージ。ガードで防がれる" };
-  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard, desc: "ブラスト（およびガード可能な必殺技）を防ぐ" };
+  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge, energy: "+1", desc: "エネルギーを1溜める（MAX3）" };
+  if (key === "blast")  return { label: "ブラスト", cost: 1, icon: ICON_SRC.blast, energy: "-1", desc: "相手に1ダメージ。ガードで防がれる" };
+  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard, energy: "0",  desc: "ブラスト（およびガード可能な必殺技）を防ぐ" };
   // special
   const sp = charOf(player).special;
-  return { label: sp.name, cost: sp.cost, icon: charOf(player).specialIcon, desc: `必殺技／${sp.name}（消費エネルギー ${sp.cost}）：${sp.desc}` };
+  return { label: sp.name, cost: sp.cost, icon: charOf(player).specialIcon,
+           energy: sp.cost === 0 ? "0" : `-${sp.cost}`, desc: sp.desc };
 }
 
 let state;
@@ -790,7 +794,8 @@ function pickAction(player, key) {
   const a = actionMeta(player, key);
   document.querySelectorAll("#actionButtons .action").forEach((el) =>
     el.classList.toggle("selected", el.dataset.key === key));
-  $("actionDesc").textContent = `${a.label}／${a.desc}`;
+  // e.g. "VOID／エネルギー: -1／相手のエネルギーを1減らす"
+  $("actionDesc").textContent = `${a.label}／エネルギー: ${a.energy}／${a.desc}`;
   $("selectConfirmBtn").disabled = false;
 }
 
