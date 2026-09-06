@@ -226,13 +226,18 @@
   .fighter-wrap.right.knockback { transform: translateX(40px); }
   .fighter-wrap.left.knockback  { transform: translateX(-40px); }
 
+  /* Name tags sit at a fixed height at the top of the stage so both players'
+     labels line up regardless of the sprite image heights. */
   .name-tag {
-    position: absolute; top: -46px; left: 50%; transform: translateX(-50%);
+    position: absolute; top: 10px; z-index: 15;
+    width: 150px; text-align: center;
     font-size: 0.72rem; font-weight: bold; white-space: nowrap;
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   }
-  .p1c .name-tag { color: var(--p1); }
-  .p2c .name-tag { color: var(--p2); }
+  .name-tag.left  { left: 0; }
+  .name-tag.right { right: 0; }
+  .name-tag.p1c { color: var(--p1); }
+  .name-tag.p2c { color: var(--p2); }
 
   .battle-log {
     position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
@@ -444,13 +449,16 @@
       <div class="stage" id="stage">
         <div class="stage-ground"></div>
 
+        <!-- Name tags are anchored to the stage (not the fighters) so they
+             stay at the same height regardless of each sprite's image size. -->
+        <div class="name-tag p1c left">プレイヤー1</div>
+        <div class="name-tag p2c right">プレイヤー2</div>
+
         <div class="fighter-wrap left p1c" id="fw1">
-          <div class="name-tag">プレイヤー1</div>
           <img class="fighter-img" id="fig1" alt="" decoding="async" />
         </div>
 
         <div class="fighter-wrap right p2c" id="fw2">
-          <div class="name-tag">プレイヤー2</div>
           <img class="fighter-img" id="fig2" alt="" decoding="async" />
         </div>
 
