@@ -18,7 +18,7 @@
 <!-- Start image downloads as early as possible for near-instant display -->
 <link rel="preconnect" href="https://github.com" crossorigin />
 <link rel="preconnect" href="https://objects.githubusercontent.com" crossorigin />
-<link rel="preload" as="image" href="https://github.com/user-attachments/assets/09c01193-501b-4ca5-9235-0097fd3836e2" />
+<link rel="preload" as="image" href="https://github.com/user-attachments/assets/90a270b7-5853-4499-85d5-35a64f5a276b" />
 
 <style>
   :root {
@@ -129,6 +129,9 @@
   button.action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
   button.action:active:not(:disabled) { transform: translateY(0); }
   button.action:disabled { opacity: 0.35; cursor: not-allowed; }
+  /* Unaffordable actions are still clickable (to preview their description),
+     just dimmed to signal they can't be confirmed. */
+  button.action.unaffordable .icon { opacity: 0.35; }
   button.action.selected { box-shadow: 0 0 0 3px var(--accent), 0 0 16px rgba(255,138,0,0.45); }
   .action-desc {
     text-align: center; color: var(--text); font-size: 0.88rem; line-height: 1.5;
@@ -156,11 +159,11 @@
     border: 1px solid #39424f; font-size: 0.95rem; padding: 12px;
   }
   .pass-note { text-align: center; color: var(--muted); font-size: 0.95rem; margin: 8px 0 16px; }
-  .ready-icons { display: flex; justify-content: center; align-items: flex-start; gap: 30px; margin: 10px 0 18px; }
-  .ready-col { display: flex; flex-direction: column; align-items: center; }
-  .ready-label { font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; }
+  .ready-labels { display: flex; justify-content: center; gap: 30px; margin: 10px 0 8px; }
+  .ready-labels .ready-label { width: 110px; text-align: center; font-size: 0.85rem; font-weight: bold; }
   .ready-label.p1 { color: var(--p1); }
   .ready-label.p2 { color: var(--p2); }
+  .ready-icons { display: flex; justify-content: center; align-items: flex-end; gap: 30px; margin: 0 0 18px; }
   .ready-icons .ready-fig { width: 110px; height: 150px; position: relative; }
 
   /* ============ CHARACTER SELECT ============ */
@@ -333,6 +336,9 @@
   #app.home-active #topbar,
   #app.home-active #statusRow,
   #app.home-active #turnBanner { display: none; }
+  /* Hide the top status row & turn banner on the character-select screen. */
+  #app.char-active #statusRow,
+  #app.char-active #turnBanner { display: none; }
   /* The big title image only appears on the home screen. */
   h1.title { display: none; }
   #app.home-active h1.title { display: block; }
@@ -345,7 +351,7 @@
   </div>
   <h1 class="title">
     <img class="title-img"
-         src="https://github.com/user-attachments/assets/09c01193-501b-4ca5-9235-0097fd3836e2"
+         src="https://github.com/user-attachments/assets/90a270b7-5853-4499-85d5-35a64f5a276b"
          alt="HADOUKEN BATTLE" fetchpriority="high" decoding="async" />
   </h1>
 
@@ -420,15 +426,13 @@
   <div class="screen" id="readyScreen">
     <div class="card">
       <div class="prompt">両者のアクションが決定！</div>
+      <div class="ready-labels">
+        <div class="ready-label p1">プレイヤー1</div>
+        <div class="ready-label p2">プレイヤー2</div>
+      </div>
       <div class="ready-icons">
-        <div class="ready-col">
-          <div class="ready-label p1">プレイヤー1</div>
-          <div class="ready-fig" id="readyFig1"></div>
-        </div>
-        <div class="ready-col">
-          <div class="ready-label p2">プレイヤー2</div>
-          <div class="ready-fig" id="readyFig2"></div>
-        </div>
+        <div class="ready-fig" id="readyFig1"></div>
+        <div class="ready-fig" id="readyFig2"></div>
       </div>
       <button class="big-btn" id="fightBtn">⚔️Battle⚔️</button>
     </div>
@@ -474,7 +478,7 @@
 const MAX_ENERGY = 3;
 const MAX_HP = 3;
 
-const TITLE_SRC = "https://github.com/user-attachments/assets/09c01193-501b-4ca5-9235-0097fd3836e2";
+const TITLE_SRC = "https://github.com/user-attachments/assets/90a270b7-5853-4499-85d5-35a64f5a276b";
 
 // Shared action-select icons (charge / guard / blast are common to all chars).
 const ICON_SRC = {
@@ -672,6 +676,8 @@ function showScreen(id) {
   screens.forEach((s) => $(s).classList.toggle("show", s === id));
   // toggle home layout (hide in-game chrome on the title screen)
   $("app").classList.toggle("home-active", id === "home");
+  // hide the top status row (wins / HP / energy) on the character-select screen
+  $("app").classList.toggle("char-active", id === "charScreen");
 }
 
 function renderEnergy() {
@@ -776,27 +782,38 @@ function goToSelect(player) {
     const btn = document.createElement("button");
     btn.className = "action";
     btn.dataset.key = key;
+    // Unaffordable actions can still be selected (so their description shows),
+    // but they are visually dimmed and the 決定 button stays disabled.
     const canAfford = state.energy[player] >= a.cost;
-    btn.disabled = !canAfford;
+    if (!canAfford) btn.classList.add("unaffordable");
     btn.title = `${a.label}`;
     btn.setAttribute("aria-label", a.label);
     btn.innerHTML = `<img class="icon" src="${a.icon}" alt="" decoding="async" />`;
-    if (canAfford) btn.addEventListener("click", () => pickAction(player, key));
+    btn.addEventListener("click", () => pickAction(player, key));
     container.appendChild(btn);
   }
   showScreen("selectScreen");
 }
 
-// Highlight the tentatively-chosen action and show its description; the choice
-// is only committed when the 決定 button is pressed.
+// Highlight the tentatively-chosen action and show its description. The choice
+// is only committed when the 決定 button is pressed; unaffordable actions show
+// their description but cannot be confirmed.
 function pickAction(player, key) {
-  pendingAction = key;
   const a = actionMeta(player, key);
+  const canAfford = state.energy[player] >= a.cost;
   document.querySelectorAll("#actionButtons .action").forEach((el) =>
     el.classList.toggle("selected", el.dataset.key === key));
   // e.g. "VOID／エネルギー: -1／相手のエネルギーを1減らす"
-  $("actionDesc").textContent = `${a.label}／エネルギー: ${a.energy}／${a.desc}`;
-  $("selectConfirmBtn").disabled = false;
+  let text = `${a.label}／エネルギー: ${a.energy}／${a.desc}`;
+  if (!canAfford) text += "（エネルギー不足で使用できません）";
+  $("actionDesc").textContent = text;
+  if (canAfford) {
+    pendingAction = key;
+    $("selectConfirmBtn").disabled = false;
+  } else {
+    pendingAction = null;
+    $("selectConfirmBtn").disabled = true;
+  }
 }
 
 function confirmAction() {
