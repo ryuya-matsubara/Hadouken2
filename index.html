@@ -129,6 +129,12 @@
   button.action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
   button.action:active:not(:disabled) { transform: translateY(0); }
   button.action:disabled { opacity: 0.35; cursor: not-allowed; }
+  button.action.selected { box-shadow: 0 0 0 3px var(--accent), 0 0 16px rgba(255,138,0,0.45); }
+  .action-desc {
+    text-align: center; color: var(--text); font-size: 0.88rem; line-height: 1.5;
+    background: var(--panel2); border: 1px solid #39424f; border-radius: 10px;
+    padding: 12px; margin: 16px 0 4px; min-height: 3em;
+  }
 
   .big-btn {
     display: block;
@@ -150,7 +156,11 @@
     border: 1px solid #39424f; font-size: 0.95rem; padding: 12px;
   }
   .pass-note { text-align: center; color: var(--muted); font-size: 0.95rem; margin: 8px 0 16px; }
-  .ready-icons { display: flex; justify-content: center; gap: 30px; margin: 10px 0 18px; }
+  .ready-icons { display: flex; justify-content: center; align-items: flex-start; gap: 30px; margin: 10px 0 18px; }
+  .ready-col { display: flex; flex-direction: column; align-items: center; }
+  .ready-label { font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; }
+  .ready-label.p1 { color: var(--p1); }
+  .ready-label.p2 { color: var(--p2); }
   .ready-icons .ready-fig { width: 110px; height: 150px; position: relative; }
 
   /* ============ CHARACTER SELECT ============ */
@@ -165,10 +175,16 @@
     transition: transform 0.08s, border-color 0.15s, box-shadow 0.15s;
     color: var(--text);
     font: inherit;
+    /* Fixed box size so all four cards match regardless of text length. */
+    height: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
   }
   .char-opt:hover { transform: translateY(-2px); }
   .char-opt.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(255,138,0,0.35); }
-  .char-opt img { width: 84px; height: 84px; object-fit: contain; display: block; margin: 0 auto 6px; }
+  .char-opt img { width: 120px; height: 120px; object-fit: contain; display: block; margin: 0 auto 6px; }
   .char-opt .cname { font-weight: bold; font-size: 1rem; margin-bottom: 2px; }
   .char-opt .cmove { font-size: 0.82rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
   .char-opt .ccost { font-size: 0.72rem; color: var(--text); margin-bottom: 4px; }
@@ -392,6 +408,8 @@
     <div class="card">
       <div class="prompt" id="selectPrompt"></div>
       <div class="actions" id="actionButtons"></div>
+      <div class="action-desc" id="actionDesc">アクションを選んでください</div>
+      <button class="big-btn" id="selectConfirmBtn" disabled>決定</button>
     </div>
   </div>
 
@@ -400,8 +418,14 @@
     <div class="card">
       <div class="prompt">両者のアクションが決定！</div>
       <div class="ready-icons">
-        <div class="ready-fig" id="readyFig1"></div>
-        <div class="ready-fig" id="readyFig2"></div>
+        <div class="ready-col">
+          <div class="ready-label p1">プレイヤー1</div>
+          <div class="ready-fig" id="readyFig1"></div>
+        </div>
+        <div class="ready-col">
+          <div class="ready-label p2">プレイヤー2</div>
+          <div class="ready-fig" id="readyFig2"></div>
+        </div>
       </div>
       <button class="big-btn" id="fightBtn">⚔️Battle⚔️</button>
     </div>
@@ -508,7 +532,7 @@ const CHARACTERS = {
     specialFx:   "https://github.com/user-attachments/assets/2f0e8373-6cdd-4166-a7e3-a01abbbd2364",
     specialIcon: "https://github.com/user-attachments/assets/315f854e-97d1-4af4-a0f3-bd12205999da",
     special: { name: "VOID", cost: 1, dmg: 0, guardable: false, kind: "drain",
-               desc: "相手のエネルギーを1減らす。相手が攻撃してきた場合、HPは減る" },
+               desc: "相手のエネルギーを1減らす" },
   },
   angel: {
     id: "angel",
@@ -571,12 +595,12 @@ const IMG_CACHE = {};
 
 // ---- Action definitions (special is resolved per character) ------------
 function actionMeta(player, key) {
-  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge };
-  if (key === "blast")  return { label: "ブラスト", cost: 1, icon: ICON_SRC.blast };
-  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard };
+  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge, desc: "エネルギーを1溜める（MAX3）" };
+  if (key === "blast")  return { label: "ブラスト", cost: 1, icon: ICON_SRC.blast, desc: "相手に1ダメージ。ガードで防がれる" };
+  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard, desc: "ブラスト（およびガード可能な必殺技）を防ぐ" };
   // special
   const sp = charOf(player).special;
-  return { label: sp.name, cost: sp.cost, icon: charOf(player).specialIcon };
+  return { label: sp.name, cost: sp.cost, icon: charOf(player).specialIcon, desc: `必殺技／${sp.name}（消費エネルギー ${sp.cost}）：${sp.desc}` };
 }
 
 let state;
@@ -671,6 +695,7 @@ function setActiveCard(player) {
 
 // ---- Character selection ----
 let pendingChar = null;
+let pendingAction = null;
 function goToCharSelect(player) {
   state.currentPlayer = player;
   setActiveCard(player);
@@ -736,26 +761,43 @@ function goToPass(player) {
 
 function goToSelect(player) {
   setActiveCard(player);
+  pendingAction = null;
   $("selectPrompt").textContent = `プレイヤー${player}：アクションを選択`;
+  $("actionDesc").textContent = "アクションを選んでください";
+  $("selectConfirmBtn").disabled = true;
   const container = $("actionButtons");
   container.innerHTML = "";
   for (const key of ["charge", "blast", "guard", "special"]) {
     const a = actionMeta(player, key);
     const btn = document.createElement("button");
     btn.className = "action";
+    btn.dataset.key = key;
     const canAfford = state.energy[player] >= a.cost;
     btn.disabled = !canAfford;
     btn.title = `${a.label}`;
     btn.setAttribute("aria-label", a.label);
     btn.innerHTML = `<img class="icon" src="${a.icon}" alt="" decoding="async" />`;
-    if (canAfford) btn.addEventListener("click", () => chooseAction(player, key));
+    if (canAfford) btn.addEventListener("click", () => pickAction(player, key));
     container.appendChild(btn);
   }
   showScreen("selectScreen");
 }
 
-function chooseAction(player, key) {
-  state.choice[player] = key;
+// Highlight the tentatively-chosen action and show its description; the choice
+// is only committed when the 決定 button is pressed.
+function pickAction(player, key) {
+  pendingAction = key;
+  const a = actionMeta(player, key);
+  document.querySelectorAll("#actionButtons .action").forEach((el) =>
+    el.classList.toggle("selected", el.dataset.key === key));
+  $("actionDesc").textContent = `${a.label}／${a.desc}`;
+  $("selectConfirmBtn").disabled = false;
+}
+
+function confirmAction() {
+  if (!pendingAction) return;
+  const player = state.currentPlayer;
+  state.choice[player] = pendingAction;
   if (player === 1) {
     goToPass(2);
   } else {
@@ -1159,6 +1201,7 @@ function finishBattle() {
 
 // ---- Events ----
 $("charConfirmBtn").addEventListener("click", () => confirmChar());
+$("selectConfirmBtn").addEventListener("click", () => confirmAction());
 $("passBtn").addEventListener("click", () => goToSelect(state.currentPlayer));
 $("fightBtn").addEventListener("click", () => runBattle());
 $("startBtn").addEventListener("click", () => startGame());
