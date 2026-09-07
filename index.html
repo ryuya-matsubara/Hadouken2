@@ -258,9 +258,10 @@
   .name-tag.p2c { color: var(--p2); }
 
   .battle-log {
-    position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
-    font-size: 1.05rem; font-weight: bold; min-height: 1.4em;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    position: absolute; left: 0; right: 0; bottom: 6px; text-align: center;
+    font-size: 0.92rem; font-weight: bold; min-height: 1.3em;
+    line-height: 1.35; white-space: pre-line;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     z-index: 30;
   }
   .countdown {
@@ -810,9 +811,7 @@ function pickAction(player, key) {
   document.querySelectorAll("#actionButtons .action").forEach((el) =>
     el.classList.toggle("selected", el.dataset.key === key));
   // e.g. "VOID／エネルギー: -1／相手のエネルギーを1減らす"
-  let text = `${a.label}／エネルギー: ${a.energy}／${a.desc}`;
-  if (!canAfford) text += "（エネルギー不足で使用できません）";
-  $("actionDesc").textContent = text;
+  $("actionDesc").textContent = `${a.label}／エネルギー: ${a.energy}／${a.desc}`;
   if (canAfford) {
     pendingAction = key;
     $("selectConfirmBtn").disabled = false;
@@ -1144,9 +1143,12 @@ async function runBattle() {
   if (dmgTargets.length) await delay(500);
   if (cancelled()) return;
 
-  // Notices (ガード成功！ / 相殺！) first, then the HP/EN change lines.
-  const parts = [...outcome.logs, ...deltaLines];
-  $("battleLog").textContent = parts.length ? parts.join("　") : "変化なし";
+  // First line: the actions taken (e.g. "チャージ VS チャージ"), then any
+  // notices (ガード成功！ / 相殺！), then the HP/EN change lines. One per line.
+  const actionLine = `${actionMeta(1, a1).label}　VS　${actionMeta(2, a2).label}`;
+  const changes = [...outcome.logs, ...deltaLines];
+  const parts = [actionLine, ...(changes.length ? changes : ["変化なし"])];
+  $("battleLog").textContent = parts.join("\n");
   await delay(1400);
   if (cancelled()) return;
   finishBattle();
