@@ -401,16 +401,16 @@
   <!-- Home / title screen -->
   <div class="screen" id="home">
     <div class="card home-card">
-      <p class="home-lead">プレイヤー1 と プレイヤー2 の読み合い対戦。<br>相手のHPを0にした方が勝ち！</p>
+      <p class="home-lead">プレイヤー同士の読み合い対戦<br>相手のHPを0にした方が勝ち！</p>
       <button class="big-btn" id="startBtn">ゲームスタート</button>
 
       <div class="home-rules">
-        <div class="hr-item"><b>チャージ</b>／エネルギーを1溜める（MAX3）</div>
-        <div class="hr-item"><b>ブラスト</b>／エネルギー1消費。相手がチャージ中なら1ダメージ・ガードで防がれる</div>
-        <div class="hr-item"><b>ガード</b>／ブラストを防ぐ</div>
-        <div class="hr-item"><b>必殺技</b>／キャラクター固有。エネルギーを消費して発動</div>
         <div class="hr-item"><b>🟢 HP</b>／3つからスタート。0になったら負け</div>
         <div class="hr-item"><b>🟠 エネルギー</b>／最大3つ。ブラストや必殺技で消費</div>
+        <div class="hr-item"><b>【アクション】チャージ</b>／エネルギーを1溜める</div>
+        <div class="hr-item"><b>【アクション】ブラスト</b>／エネルギー1消費。相手がチャージ中なら1ダメージ・ガードで防がれる</div>
+        <div class="hr-item"><b>【アクション】ガード</b>／ブラストを防ぐ</div>
+        <div class="hr-item"><b>【アクション】必殺技</b>／キャラクター固有。エネルギーを消費して発動</div>
       </div>
     </div>
   </div>
@@ -628,9 +628,9 @@ const IMG_CACHE = {};
 
 // ---- Action definitions (special is resolved per character) ------------
 function actionMeta(player, key) {
-  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge, energy: "+1", desc: "エネルギーを1溜める（MAX3）" };
+  if (key === "charge") return { label: "チャージ", cost: 0, icon: ICON_SRC.charge, energy: "+1", desc: "エネルギーを1溜める" };
   if (key === "blast")  return { label: "ブラスト", cost: 1, icon: ICON_SRC.blast, energy: "-1", desc: "相手に1ダメージ。ガードで防がれる" };
-  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard, energy: "0",  desc: "ブラスト（およびガード可能な必殺技）を防ぐ" };
+  if (key === "guard")  return { label: "ガード",   cost: 0, icon: ICON_SRC.guard, energy: "0",  desc: "ブラスト（およびメガブラスト）を防ぐ" };
   // special
   const sp = charOf(player).special;
   return { label: sp.name, cost: sp.cost, icon: charOf(player).specialIcon,
@@ -866,6 +866,13 @@ function resolveTurn(a1, a2) {
     a === "blast" || (a === "special" && charOf(p).special.kind === "attack" && charOf(p).special.guardable);
   const clash = isBlastType(1, a1) && isBlastType(2, a2);
 
+  // 波動拳 = an unguardable/piercing attack special. It overpowers the
+  // opponent's blast-type attack: that attack fails (ブラスト/メガブラストは失敗)
+  // while 波動拳 still lands.
+  const isPierce = (p, a) =>
+    a === "special" && charOf(p).special.kind === "attack" && !charOf(p).special.guardable;
+  const p1Pierce = isPierce(1, a1), p2Pierce = isPierce(2, a2);
+
   // Damage dealt by an attacking action against opponent's action.
   // Returns damage number (0 if fully defended) plus whether it was "blocked".
   function attackResult(attacker, action, defender, defAction) {
@@ -922,22 +929,31 @@ function resolveTurn(a1, a2) {
   const res1 = attackResult(1, a1, 2, a2);
   const res2 = attackResult(2, a2, 1, a1);
 
+  // A blast-type attack fails if the opponent used 波動拳 (piercing).
+  const p1Fails = isBlastType(1, a1) && p2Pierce;
+  const p2Fails = isBlastType(2, a2) && p1Pierce;
+
   if (a1 === "blast" || (a1 === "special" && sp1.kind === "attack")) {
-    if (res1.blocked) {
+    if (p1Fails) {
+      logs.push(`プレイヤー1の${a1 === "special" ? sp1.name : "ブラスト"}は失敗！`);
+    } else if (res1.blocked) {
       logs.push(`プレイヤー2のガード成功！`);
     } else if (res1.dmg > 0) {
       events.push({ type: "dmg", target: 2, amount: res1.dmg, from: 1, action: a1 });
     }
   }
   if (a2 === "blast" || (a2 === "special" && sp2.kind === "attack")) {
-    if (res2.blocked) {
+    if (p2Fails) {
+      logs.push(`プレイヤー2の${a2 === "special" ? sp2.name : "ブラスト"}は失敗！`);
+    } else if (res2.blocked) {
       logs.push(`プレイヤー1のガード成功！`);
     } else if (res2.dmg > 0) {
       events.push({ type: "dmg", target: 1, amount: res2.dmg, from: 2, action: a2 });
     }
   }
 
-  return { events, logs, isAttack: { 1: isAttack(1, a1), 2: isAttack(2, a2) } };
+  return { events, logs, fails: { 1: p1Fails, 2: p2Fails },
+           isAttack: { 1: isAttack(1, a1), 2: isAttack(2, a2) } };
 }
 
 function applyCosts() {
@@ -1205,10 +1221,20 @@ async function playChoreography(a1, a2, outcome) {
     }
   }
 
-  // Fire projectiles for any attacking action.
+  // Fire projectiles for any attacking action. A failing blast-type shot
+  // (overpowered by the opponent's 波動拳) only travels part-way then fizzles.
+  const fails = outcome.fails || { 1: false, 2: false };
   const projectiles = [];
-  if (p1Attacks) projectiles.push(spawnProjectile(1, a1 === "special" ? "special" : "blast"));
-  if (p2Attacks) projectiles.push(spawnProjectile(2, a2 === "special" ? "special" : "blast"));
+  if (p1Attacks) {
+    const el = spawnProjectile(1, a1 === "special" ? "special" : "blast");
+    if (fails[1]) el.style.animationDuration = "0.28s";
+    projectiles.push(el);
+  }
+  if (p2Attacks) {
+    const el = spawnProjectile(2, a2 === "special" ? "special" : "blast");
+    if (fails[2]) el.style.animationDuration = "0.28s";
+    projectiles.push(el);
+  }
 
   // VOID drain shimmer (Phantom) — small pulse toward opponent.
   for (const p of [1, 2]) {
