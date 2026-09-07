@@ -140,6 +140,21 @@
     padding: 12px; margin: 16px 0 4px; min-height: 3em;
   }
 
+  /* ---- Compact action-select screen (fit without vertical scroll) ---- */
+  #app.select-active .char-name { display: none; }
+  #app.select-active #turnBanner { margin-bottom: 6px; }
+  #app.select-active #statusRow { margin-bottom: 10px; }
+  #app.select-active .player-card { padding: 8px; }
+  #app.select-active .player-name { margin-bottom: 2px; }
+  #app.select-active .wins { margin-bottom: 3px; }
+  #app.select-active .hp,
+  #app.select-active .energy { font-size: 1.05rem; min-height: 1.2em; }
+  #selectScreen .card { padding: 14px; }
+  #selectScreen .prompt { margin-bottom: 10px; }
+  /* Keep the two icon rows from getting too tall so everything fits. */
+  #selectScreen .actions { gap: 10px; max-width: 300px; margin: 0 auto; }
+  #selectScreen .action-desc { margin: 10px 0 10px; padding: 10px; min-height: 3.6em; }
+
   .big-btn {
     display: block;
     width: 100%;
@@ -168,19 +183,21 @@
   .ready-icons .ready-fig { width: 110px; height: 150px; position: relative; }
 
   /* ============ CHARACTER SELECT ============ */
-  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; align-items: start; }
+  #charScreen .card { padding: 14px; }
+  #charScreen .prompt { margin-bottom: 10px; }
+  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; align-items: start; }
   .char-opt {
     background: var(--panel2);
     border: 2px solid #39424f;
     border-radius: 12px;
-    padding: 12px;
+    padding: 8px;
     cursor: pointer;
     text-align: center;
     transition: transform 0.08s, border-color 0.15s, box-shadow 0.15s;
     color: var(--text);
     font: inherit;
     /* Fixed box size so all four cards match regardless of text length. */
-    height: 320px;
+    height: 232px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -188,14 +205,17 @@
   }
   .char-opt:hover { transform: translateY(-2px); }
   .char-opt.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(255,138,0,0.35); }
-  .char-opt img { width: 120px; height: 120px; object-fit: contain; display: block; margin: 0 auto 6px; }
-  .char-opt .cname { font-weight: bold; font-size: 1rem; margin-bottom: 2px; }
-  .char-opt .cmove { font-size: 0.82rem; color: var(--accent); font-weight: bold; margin-bottom: 4px; }
-  .char-opt .ccost { font-size: 0.72rem; color: var(--text); margin-bottom: 4px; }
-  .char-opt .cdesc { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
+  .char-opt img { width: 92px; height: 92px; object-fit: contain; display: block; margin: 0 auto 4px; }
+  .char-opt .cname { font-weight: bold; font-size: 0.95rem; margin-bottom: 2px; }
+  .char-opt .cmove { font-size: 0.8rem; color: var(--accent); font-weight: bold; margin-bottom: 3px; }
+  .char-opt .ccost { font-size: 0.7rem; color: var(--text); margin-bottom: 3px; }
+  .char-opt .cdesc { font-size: 0.72rem; color: var(--muted); line-height: 1.35; }
 
   /* ============ BATTLE STAGE ============ */
   #battle .card { padding: 0; overflow: hidden; }
+  /* "次のターンへ" button under the stage; only shown when the match continues */
+  .battle-next-wrap { display: none; padding: 12px; }
+  .battle-next-wrap.show { display: block; }
   .stage {
     position: relative;
     width: 100%;
@@ -467,6 +487,9 @@
         <div class="countdown" id="countdown"></div>
         <div class="battle-log" id="battleLog"></div>
       </div>
+      <div class="battle-next-wrap" id="battleNextWrap">
+        <button class="big-btn" id="nextTurnBtn">次のターンへ</button>
+      </div>
     </div>
   </div>
 
@@ -687,6 +710,8 @@ function showScreen(id) {
   $("app").classList.toggle("home-active", id === "home");
   // hide the top status row (wins / HP / energy) on the character-select screen
   $("app").classList.toggle("char-active", id === "charScreen");
+  // compact layout on the action-select screen so it fits without scrolling
+  $("app").classList.toggle("select-active", id === "selectScreen");
 }
 
 function renderEnergy() {
@@ -1078,6 +1103,7 @@ function resetStage() {
   $("fig2").src = poseSrc(2, "stance");
   $("battleLog").textContent = "";
   $("countdown").textContent = "";
+  $("battleNextWrap").classList.remove("show");
   void stage.offsetWidth;
 }
 
@@ -1137,6 +1163,13 @@ async function runBattle() {
   await delay(1400);
   if (cancelled()) return;
   finishBattle();
+}
+
+// Advance to the next turn (called by the "次のターンへ" button).
+function goNextTurn() {
+  $("battleNextWrap").classList.remove("show");
+  state.turn++;
+  startTurn();
 }
 
 async function playChoreography(a1, a2, outcome) {
@@ -1208,7 +1241,8 @@ async function playChoreography(a1, a2, outcome) {
 
 function finishBattle() {
   const dead1 = state.hp[1] <= 0, dead2 = state.hp[2] <= 0;
-  if (!dead1 && !dead2) { state.turn++; startTurn(); return; }
+  // No KO: wait for the player to press "次のターンへ" instead of auto-advancing.
+  if (!dead1 && !dead2) { $("battleNextWrap").classList.add("show"); return; }
 
   let winner;
   if (dead1 && dead2) winner = 0;         // double KO -> draw
@@ -1235,6 +1269,7 @@ $("charConfirmBtn").addEventListener("click", () => confirmChar());
 $("selectConfirmBtn").addEventListener("click", () => confirmAction());
 $("passBtn").addEventListener("click", () => goToSelect(state.currentPlayer));
 $("fightBtn").addEventListener("click", () => runBattle());
+$("nextTurnBtn").addEventListener("click", () => goNextTurn());
 $("startBtn").addEventListener("click", () => startGame());
 $("restartBtn").addEventListener("click", () => playAgain());
 $("resultHomeBtn").addEventListener("click", () => goHome());
