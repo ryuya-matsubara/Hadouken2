@@ -216,15 +216,13 @@
   .stage {
     position: relative;
     width: 100%;
-    height: 330px;
+    height: 300px;
     background:
       linear-gradient(180deg, #10233b 0%, #0b1424 55%, #060b14 100%);
     overflow: hidden;
   }
-  /* The bottom band is reserved for the battle log so text never overlaps the
-     fighters. The ground/fighters/projectiles are lifted above it. */
   .stage-ground {
-    position: absolute; left: 0; right: 0; bottom: 112px; height: 74px;
+    position: absolute; left: 0; right: 0; bottom: 0; height: 74px;
     background: linear-gradient(180deg, #2a2036, #171019);
     box-shadow: inset 0 4px 12px rgba(0,0,0,0.5);
   }
@@ -234,7 +232,7 @@
   }
 
   .fighter-wrap {
-    position: absolute; bottom: 182px; width: 150px; height: auto;
+    position: absolute; bottom: 70px; width: 150px; height: auto;
     transition: transform 0.18s;
   }
   .fighter-wrap.left { left: 0; }
@@ -260,12 +258,9 @@
   .name-tag.p2c { color: var(--p2); }
 
   .battle-log {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 112px;
-    display: flex; align-items: center; justify-content: center;
-    text-align: center; padding: 6px 10px;
-    font-size: 0.92rem; font-weight: bold;
-    line-height: 1.4; white-space: pre-line;
-    background: linear-gradient(180deg, rgba(6,11,20,0.65), rgba(6,11,20,0.92));
+    position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
+    font-size: 0.92rem; font-weight: bold; min-height: 1.3em;
+    line-height: 1.35; white-space: pre-line;
     text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     z-index: 30;
   }
@@ -994,9 +989,9 @@ function flashStage() {
   f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
 }
 
-// Fighters' hand height, measured from the stage bottom. Includes the 112px
-// log band the fighters are lifted above.
-const PROJECTILE_CENTER = 262;
+// Fighters' hand height, measured from the stage bottom (their feet sit on the
+// ground at bottom:70px).
+const PROJECTILE_CENTER = 150;
 
 // kind: "blast" or "special"
 function spawnProjectile(fromPlayer, kind) {
