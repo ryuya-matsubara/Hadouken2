@@ -42,7 +42,7 @@
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    padding: 20px;
+    padding: 6px 20px 20px;
   }
   #app { width: 100%; max-width: 560px; }
   h1.title {
@@ -74,7 +74,8 @@
     font-size: 1rem;
     color: var(--accent);
     font-weight: bold;
-    margin-bottom: 14px;
+    margin-top: 2px;
+    margin-bottom: 8px;
     min-height: 1.4em;
   }
 
@@ -93,8 +94,6 @@
   .player-name { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
   .p1 .player-name { color: var(--p1); }
   .p2 .player-name { color: var(--p2); }
-  .char-name { font-size: 0.78rem; color: var(--muted); min-height: 1.1em; margin-bottom: 6px; }
-  .wins { font-size: 0.8rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; }
   .stat-label { font-size: 0.66rem; color: var(--muted); letter-spacing: 1px; }
   .hp { font-size: 1.3rem; letter-spacing: 2px; min-height: 1.4em; margin-bottom: 2px; }
   .hp .empty { opacity: 0.18; }
@@ -141,12 +140,10 @@
   }
 
   /* ---- Compact action-select screen (fit without vertical scroll) ---- */
-  #app.select-active .char-name { display: none; }
   #app.select-active #turnBanner { margin-bottom: 6px; }
   #app.select-active #statusRow { margin-bottom: 10px; }
   #app.select-active .player-card { padding: 8px; }
   #app.select-active .player-name { margin-bottom: 2px; }
-  #app.select-active .wins { margin-bottom: 3px; }
   #app.select-active .hp,
   #app.select-active .energy { font-size: 1.05rem; min-height: 1.2em; }
   #selectScreen .card { padding: 14px; }
@@ -386,8 +383,6 @@
   <div class="status-row" id="statusRow">
     <div class="player-card p1" id="card1">
       <div class="player-name">プレイヤー1</div>
-      <div class="char-name" id="charName1"></div>
-      <div class="wins" id="wins1">勝利数 0</div>
       <div class="stat-label">HP</div>
       <div class="hp" id="hp1"></div>
       <div class="stat-label">エネルギー</div>
@@ -395,8 +390,6 @@
     </div>
     <div class="player-card p2" id="card2">
       <div class="player-name">プレイヤー2</div>
-      <div class="char-name" id="charName2"></div>
-      <div class="wins" id="wins2">勝利数 0</div>
       <div class="stat-label">HP</div>
       <div class="hp" id="hp2"></div>
       <div class="stat-label">エネルギー</div>
@@ -646,9 +639,6 @@ function actionMeta(player, key) {
 let state;
 let battleToken = 0; // incremented whenever a battle should be cancelled (e.g. Home)
 
-// Cumulative win counts. Persist across "もう一度あそぶ"; reset on Home / new game.
-let wins = { 1: 0, 2: 0 };
-
 function initState() {
   state = {
     energy: { 1: 0, 2: 0 },
@@ -660,45 +650,28 @@ function initState() {
   };
 }
 
-function renderWins() {
-  $("wins1").textContent = `勝利数 ${wins[1]}`;
-  $("wins2").textContent = `勝利数 ${wins[2]}`;
-}
-
-function renderCharNames() {
-  $("charName1").textContent = state.char[1] ? CHARACTERS[state.char[1]].name : "";
-  $("charName2").textContent = state.char[2] ? CHARACTERS[state.char[2]].name : "";
-}
-
-// Show the home / title screen, cancelling any running battle. Resets wins.
+// Show the home / title screen, cancelling any running battle.
 function goHome() {
   battleToken++;          // invalidates any in-flight runBattle()
-  wins = { 1: 0, 2: 0 };
   initState();
-  renderWins();
-  renderCharNames();
   setActiveCard(0);
   $("turnBanner").textContent = "";
   showScreen("home");
 }
 
-// Begin a fresh game from the home screen -> character selection. Resets wins.
+// Begin a fresh game from the home screen -> character selection.
 function startGame() {
   battleToken++;
-  wins = { 1: 0, 2: 0 };
-  renderWins();
   initState();
-  renderCharNames();
   goToCharSelect(1);
 }
 
-// Play again after a result, keeping characters and win count.
+// Play again after a result, keeping the chosen characters.
 function playAgain() {
   battleToken++;
   const keepChar = { 1: state.char[1], 2: state.char[2] };
   initState();
   state.char = keepChar;
-  renderCharNames();
   startTurn();
 }
 
@@ -776,7 +749,6 @@ function confirmChar() {
   if (!pendingChar) return;
   const player = state.currentPlayer;
   state.char[player] = pendingChar;
-  renderCharNames();
   if (player === 1) {
     goToCharSelect(2);
   } else {
@@ -1256,9 +1228,7 @@ function finishBattle() {
     $("winnerText").style.color = "var(--text)";
     $("winnerSub").textContent = "両者ダウン！";
   } else {
-    wins[winner]++;
-    renderWins();
-    $("winnerText").textContent = `🏆 プレイヤー${winner}（${CHARACTERS[state.char[winner]].name}）の勝ち！`;
+    $("winnerText").textContent = `🏆 プレイヤー${winner} の勝ち！`;
     $("winnerText").style.color = winner === 1 ? "var(--p1)" : "var(--p2)";
     $("winnerSub").textContent = "相手のHPを0にした！";
   }
