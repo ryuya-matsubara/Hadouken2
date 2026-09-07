@@ -891,12 +891,14 @@ function resolveTurn(a1, a2) {
   // acting player regardless of opponent (VOID also drains).
   // We collect events then apply.
 
-  // Heal
+  // `logs` holds only special notices (ガード成功！ / 相殺！). Per-player HP/EN
+  // changes are reported separately as delta lines in the battle scene.
+
+  // Heal (Angel)
   for (const p of [1, 2]) {
     const a = p === 1 ? a1 : a2;
     if (a === "special" && charOf(p).special.kind === "heal") {
       events.push({ type: "heal", target: p, amount: 1 });
-      logs.push(`プレイヤー${p}の${charOf(p).special.name}！HPを回復！`);
     }
   }
 
@@ -907,14 +909,13 @@ function resolveTurn(a1, a2) {
     if (a === "special" && charOf(p).special.kind === "drain") {
       const opp = p === 1 ? 2 : 1;
       events.push({ type: "drain", target: opp, amount: 1 });
-      logs.push(`プレイヤー${p}の${charOf(p).special.name}！プレイヤー${opp}のエネルギーを吸収！`);
     }
   }
 
   // Blast-type vs blast-type: mutual cancel. Neither side loses HP and there
   // is no knockback.
   if (clash) {
-    logs.push("ブラストが激突！相殺！");
+    logs.push("相殺！");
     return { events, logs, clash: true, isAttack: { 1: isAttack(1, a1), 2: isAttack(2, a2) } };
   }
 
@@ -924,22 +925,18 @@ function resolveTurn(a1, a2) {
 
   if (a1 === "blast" || (a1 === "special" && sp1.kind === "attack")) {
     if (res1.blocked) {
-      logs.push(`プレイヤー2がガードで防いだ！`);
+      logs.push(`プレイヤー2のガード成功！`);
     } else if (res1.dmg > 0) {
       events.push({ type: "dmg", target: 2, amount: res1.dmg, from: 1, action: a1 });
-      logs.push(`プレイヤー1の${a1 === "special" ? sp1.name : "ブラスト"}が命中！`);
     }
   }
   if (a2 === "blast" || (a2 === "special" && sp2.kind === "attack")) {
     if (res2.blocked) {
-      logs.push(`プレイヤー1がガードで防いだ！`);
+      logs.push(`プレイヤー1のガード成功！`);
     } else if (res2.dmg > 0) {
       events.push({ type: "dmg", target: 1, amount: res2.dmg, from: 2, action: a2 });
-      logs.push(`プレイヤー2の${a2 === "special" ? sp2.name : "ブラスト"}が命中！`);
     }
   }
-
-  if (events.length === 0) logs.push("決着つかず。次のターンへ！");
 
   return { events, logs, isAttack: { 1: isAttack(1, a1), 2: isAttack(2, a2) } };
 }
@@ -1108,6 +1105,13 @@ async function runBattle() {
   if (cancelled()) return;
 
   const outcome = resolveTurn(a1, a2);
+
+  // Snapshot HP/EN so we can report the net change for each player afterward.
+  const before = {
+    hp: { 1: state.hp[1], 2: state.hp[2] },
+    en: { 1: state.energy[1], 2: state.energy[2] },
+  };
+
   applyCosts();
 
   await playChoreography(a1, a2, outcome);
@@ -1117,6 +1121,15 @@ async function runBattle() {
   applyEvents(outcome.events);
   renderEnergy();
   renderHP();
+
+  // Build per-player HP/EN change lines, e.g. "プレイヤー2のHPが-1".
+  const deltaLines = [];
+  for (const p of [1, 2]) {
+    const dHp = state.hp[p] - before.hp[p];
+    const dEn = state.energy[p] - before.en[p];
+    if (dHp !== 0) deltaLines.push(`プレイヤー${p}のHPが${dHp > 0 ? "+" : ""}${dHp}`);
+    if (dEn !== 0) deltaLines.push(`プレイヤー${p}のENが${dEn > 0 ? "+" : ""}${dEn}`);
+  }
 
   // Knockback + KO for damaged players.
   const dmgTargets = outcome.events.filter((e) => e.type === "dmg").map((e) => e.target);
@@ -1131,7 +1144,9 @@ async function runBattle() {
   if (dmgTargets.length) await delay(500);
   if (cancelled()) return;
 
-  $("battleLog").textContent = outcome.logs.join("　");
+  // Notices (ガード成功！ / 相殺！) first, then the HP/EN change lines.
+  const parts = [...outcome.logs, ...deltaLines];
+  $("battleLog").textContent = parts.length ? parts.join("　") : "変化なし";
   await delay(1400);
   if (cancelled()) return;
   finishBattle();
@@ -1201,7 +1216,7 @@ async function playChoreography(a1, a2, outcome) {
 
   // Impacts for damage events.
   const dmg = outcome.events.filter((e) => e.type === "dmg");
-  const blocked = outcome.logs.some((l) => l.includes("ガードで防いだ"));
+  const blocked = outcome.logs.some((l) => l.includes("ガード成功"));
   for (const ev of dmg) {
     impactAt(ev.target === 2);
   }
